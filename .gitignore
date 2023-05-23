@@ -1,0 +1,13 @@
+/.idea/
+
+/DNABERT/
+/6-new-12w-0/
+/transformers/
+
+# generated datas
+/data/processed_dir/
+/data/transcripts/
+/data/reads/
+
+# results
+/log/
