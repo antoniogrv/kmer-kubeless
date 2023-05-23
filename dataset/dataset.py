@@ -8,7 +8,6 @@ from tabulate import tabulate
 from glob import glob
 from Bio import SeqIO
 import pandas as pd
-import numpy as np
 import pickle
 import os
 
