@@ -6,7 +6,7 @@ if __name__ == '__main__':
             for hidden in [64, 128, 256, 512, 768]:
                 for n_hidden_layer in [3, 5, 7, 9, 12]:
                     for n_rnn_layers in [1, 3, 5, 7]:
-                        for n_words in [20, 30, 40, 50]:
+                        for n_words in [30, 40, 50]:
                             command: str = f'python3 {os.path.join(os.getcwd(), "main.py ")}' \
                                            f'-len_read 150 ' \
                                            f'-len_overlap 0 ' \
