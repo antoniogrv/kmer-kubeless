@@ -68,7 +68,18 @@ def main(
         )
 
         # init tokenizer
-        tokenizer = DNABertTokenizer()
+        tokenizer = None
+        if tokenizer_selected == 'dna_bert':
+            tokenizer = DNABertTokenizer(
+                root_dir=os.path.join(os.getcwd(), 'data'),
+                len_kmer=len_kmer
+            )
+        elif tokenizer_selected == 'dna_bert_n':
+            tokenizer = DNABertTokenizer(
+                root_dir=os.path.join(os.getcwd(), 'data'),
+                len_kmer=len_kmer,
+                add_n=True
+            )
 
         # load train and validation dataset
         train_dataset = DNADataset(
@@ -177,7 +188,18 @@ def main(
     logger: logging.Logger = setup_logger('logger', os.path.join(log_path, 'logger.log'))
 
     # init tokenizer
-    tokenizer = DNABertTokenizer()
+    tokenizer = None
+    if tokenizer_selected == 'dna_bert':
+        tokenizer = DNABertTokenizer(
+            root_dir=os.path.join(os.getcwd(), 'data'),
+            len_kmer=len_kmer
+        )
+    elif tokenizer_selected == 'dna_bert_n':
+        tokenizer = DNABertTokenizer(
+            root_dir=os.path.join(os.getcwd(), 'data'),
+            len_kmer=len_kmer,
+            add_n=True
+        )
 
     # load test dataset
     test_dataset = DNADataset(
