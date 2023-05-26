@@ -100,87 +100,11 @@ class DNABert(Model):
     def step(self, inputs: Dict[str, torch.Tensor]):
         # call self.forward
         return self(
-                input_ids=inputs['input_ids'],
-                attention_mask=inputs['attention_mask'],
-                token_type_ids=inputs['token_type_ids']
-            )
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
+            token_type_ids=inputs['token_type_ids']
+        )
 
     def compute_loss(self, target: torch.Tensor, *outputs):
         logits: torch.Tensor = outputs[0][0]
         return self.__loss(logits.view(-1, self.hyperparameter['n_classes']), target.view(-1))
-
-
-"""
-class PretrainedDNABert(Model):
-    def __init__(
-            self,
-            hyperparameter: Dict[str, any],
-            weights=Optional[torch.Tensor]
-    ):
-        # load pre-trained configuration
-        self.__config_class = BertConfig
-        self.__config = self.__config_class.from_pretrained(
-            os.path.join(os.getcwd(), '6-new-12w-0'),
-            num_labels=2,
-            finetuning_task='dnaprom',
-            cache_dir=''
-        )
-        # set number of labels equals to hidden size
-        # convert classification layer in hidden layer
-        self.__config.num_labels = self.__config.hidden_size
-
-        # init superclass
-        super().__init__(self.__config.to_dict(), weights)
-
-        # load pre-trained model
-        self.__model = BertForSequenceClassification.from_pretrained(
-            os.path.join(os.getcwd(), '6-new-12w-0'),
-            from_tf=bool(".ckpt" in os.path.join(os.getcwd(), '6-new-12w-0')),
-            config=self.__config,
-            cache_dir=''
-        )
-
-        # init classification model
-        self.__classification = nn.Sequential(
-            OrderedDict([
-                ('classifier', nn.Linear(self.__config.hidden_size, self.hyperparameter['n_classes']))
-            ])
-        )
-
-    def forward(
-            self,
-            input_ids=None,
-            attention_mask=None,
-            token_type_ids=None,
-            position_ids=None,
-            head_mask=None,
-            inputs_embeds=None
-    ):
-        # get output from pre-trained model
-        outputs = self.__model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            head_mask=head_mask,
-            inputs_embeds=inputs_embeds
-        )
-
-        # apply gelu on output
-        outputs = F.gelu(outputs[0])
-        outputs = self.__classification(outputs)
-
-        return F.sigmoid(outputs)
-
-    def step(self, batch):
-        pass
-
-    def compute_loss(self, target: torch.Tensor, *outputs):
-        pass
-
-    def __str__(self):
-        return nn.Sequential(
-            self.__model,
-            self.__classification
-        )
-"""
