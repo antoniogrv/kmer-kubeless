@@ -1,17 +1,13 @@
-from typing import Final
 from typing import List
 from typing import Dict
 from typing import Any
 
 import pandas as pd
-import logging
 import shutil
 import os
 
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.metrics import precision_recall_fscore_support
-
-SEPARATOR: Final = '\n------------------------------------\n'
 
 
 def create_test_name(
@@ -33,9 +29,9 @@ def create_test_name(
 
 
 def test_check(model_name: str, parent_name: str) -> bool:
-    log_path = os.path.join(os.getcwd(), 'log', model_name, parent_name)
+    log_path = os.path.join(os.getcwd(), '../log', model_name, parent_name)
     if os.path.exists(log_path):
-        model_path = os.path.join(log_path, 'model', 'model.h5')
+        model_path = os.path.join(log_path, '../model', 'model.h5')
         if os.path.exists(model_path):
             return True
         else:
@@ -47,42 +43,15 @@ def test_check(model_name: str, parent_name: str) -> bool:
 
 def create_folders(model_name: str, parent_name: str):
     # create log folder
-    log_path = os.path.join(os.getcwd(), 'log', model_name, parent_name)
+    log_path = os.path.join(os.getcwd(), '../log', model_name, parent_name)
     if not os.path.exists(log_path):
         os.makedirs(log_path)
     # create model folder
-    model_path = os.path.join(log_path, 'model')
+    model_path = os.path.join(log_path, '../model')
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
     return log_path, model_path
-
-
-def setup_logger(
-        name,
-        file_path,
-        level=logging.INFO
-) -> logging.Logger:
-    # setup handler
-    handler = logging.FileHandler(file_path)
-    handler.setFormatter(logging.Formatter('%(message)s'))
-    # create logger
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    logger.addHandler(logging.StreamHandler())
-
-    return logger
-
-
-def close_loggers(
-        loggers: List[logging.Logger]
-) -> None:
-    for logger in loggers:
-        handlers = logger.handlers[:]
-        for handler in handlers:
-            logger.removeHandler(handler)
-            handler.close()
 
 
 def save_result(
