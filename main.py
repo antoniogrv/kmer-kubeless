@@ -1,3 +1,4 @@
+from typing import Final
 from typing import Dict
 
 import numpy as np
@@ -21,12 +22,16 @@ from model import predict
 from sklearn.metrics import classification_report
 
 from utils import SEPARATOR
+from utils import str2bool
 from utils import create_test_name
 from utils import test_check
+from utils import delete_checkpoints
 from utils import create_folders
 from utils import setup_logger
 from utils import save_result
 from utils import close_loggers
+
+TASK: Final = 'gene_classification'
 
 
 def main(
@@ -37,7 +42,8 @@ def main(
         model_selected: str,
         tokenizer_selected: str,
         batch_size: int,
-        hyperparameter: Dict[str, any]
+        hyperparameter: Dict[str, any],
+        grid_search: bool
 ):
     # generate test name
     test_name: str = create_test_name(
@@ -50,9 +56,10 @@ def main(
     )
 
     # check if this configuration is already tested
-    if not test_check(model_name=model_selected, parent_name=test_name):
+    if not test_check(task=TASK, model_name=model_selected, parent_name=test_name):
         # create folders and get path
         log_path, model_path = create_folders(
+            task=TASK,
             model_name=model_selected,
             parent_name=test_name
         )
@@ -171,11 +178,14 @@ def main(
             optimizer=optimizer,
             model_path=model_path,
             device=device,
-            epochs=1000,
+            epochs=5,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
         )
+
+        # delete checkpoint
+        delete_checkpoints(model_path=model_path)
 
         # close loggers
         close_loggers([train_logger, logger])
@@ -183,9 +193,25 @@ def main(
         del logger
 
     # get path of model and log
-    log_path, model_path = create_folders(model_name=model_selected, parent_name=test_name)
+    log_path, model_path = create_folders(
+        task=TASK,
+        model_name=model_selected,
+        parent_name=test_name
+    )
+
+    # if grid search is True and this model is already evaluated, return
+    if grid_search and os.path.exists(os.path.join(log_path, 'result.log')):
+        return
+
     # init loggers
-    logger: logging.Logger = setup_logger('logger', os.path.join(log_path, 'logger.log'))
+    logger: logging.Logger = setup_logger(
+        'logger',
+        os.path.join(log_path, 'logger.log')
+    )
+    result: logging.Logger = setup_logger(
+        'result',
+        os.path.join(log_path, 'result.log')
+    )
 
     # init tokenizer
     tokenizer = None
@@ -240,15 +266,16 @@ def main(
         zero_division=1,
         target_names=test_dataset.labels.keys()
     )
-    logger.info(report)
+    result.info(report)
 
     # close loggers
-    close_loggers([logger])
+    close_loggers([logger, result])
     del logger
+    del result
 
     # save result
     save_result(
-        result_csv_path=os.path.join(os.getcwd(), 'log', model_selected, 'results.csv'),
+        result_csv_path=os.path.join(os.getcwd(), 'log', TASK, model_selected, 'results.csv'),
         len_read=len_read,
         len_overlap=len_overlap,
         len_kmer=len_kmer,
@@ -291,6 +318,8 @@ if __name__ == '__main__':
                         type=str, default='lstm', help='define type of recurrent layer')
     parser.add_argument('-n_rnn_layers', dest='n_rnn_layers', action='store',
                         type=int, default=2, help='define number of recurrent layers')
+    parser.add_argument('-grid_search', dest='grid_search', action='store', type=str2bool,
+                        default=False, help='set true if this script is launching from grid_search script')
 
     args = parser.parse_args()
 
@@ -325,5 +354,6 @@ if __name__ == '__main__':
         model_selected=args.model_selected,
         tokenizer_selected=args.tokenizer_selected,
         batch_size=args.batch_size,
-        hyperparameter=config
+        hyperparameter=config,
+        grid_search=args.grid_search
     )
