@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import Final
 from typing import Tuple
 from typing import Dict
 from typing import List
@@ -18,6 +19,8 @@ from logging import log
 import numpy as np
 import time
 import os
+
+N_EPOCHS_FOR_CHECKPOINT: Final = 5
 
 
 class Model(nn.Module, metaclass=ABCMeta):
@@ -161,7 +164,7 @@ def train(
                 break
 
         # save model each 5 epochs
-        if epoch_i % 5 == 0 and epoch_i != 0:
+        if epoch_i % N_EPOCHS_FOR_CHECKPOINT == 0 and epoch_i != 0:
             torch.save(model if best_model is None else best_model,
                        os.path.join(model_path, f'{model_name}_{epoch_i}.h5'))
 
