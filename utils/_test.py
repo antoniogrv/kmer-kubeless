@@ -23,10 +23,10 @@ def create_test_name(
     return test_name
 
 
-def test_check(model_name: str, parent_name: str) -> bool:
-    log_path = os.path.join(os.getcwd(), '../log', model_name, parent_name)
+def test_check(task: str, model_name: str, parent_name: str) -> bool:
+    log_path = os.path.join(os.getcwd(), 'log', task, model_name, parent_name)
     if os.path.exists(log_path):
-        model_path = os.path.join(log_path, '../model', 'model.h5')
+        model_path = os.path.join(log_path, 'model', 'model.h5')
         if os.path.exists(model_path):
             return True
         else:
@@ -34,3 +34,8 @@ def test_check(model_name: str, parent_name: str) -> bool:
             return False
     else:
         return False
+
+
+def evaluate_check(task: str, model_name: str, parent_name: str) -> bool:
+    result_path = os.path.join(os.getcwd(), 'log', task, model_name, parent_name, 'result.log')
+    return os.path.exists(result_path)
