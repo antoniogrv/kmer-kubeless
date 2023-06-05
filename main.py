@@ -178,7 +178,7 @@ def main(
             optimizer=optimizer,
             model_path=model_path,
             device=device,
-            epochs=5,
+            epochs=1000,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
