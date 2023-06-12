@@ -34,7 +34,61 @@ from utils import close_loggers
 TASK: Final = 'gene_classification'
 
 
-def main(
+def define_input_args_model_hyperparameters(
+        arg_parser: argparse.ArgumentParser,
+        suffix: str = ''
+) -> None:
+    arg_parser.add_argument(f'-{suffix}model_selected', dest=f'{suffix}model_selected', action='store',
+                            type=str, default='dna_bert', help='select the model to be used')
+    arg_parser.add_argument(f'-{suffix}hidden_size', dest=f'{suffix}hidden_size', action='store',
+                            type=int, default=768, help='define number of hidden channels')
+    arg_parser.add_argument(f'-{suffix}dropout', dest=f'{suffix}dropout', action='store',
+                            type=float, default=0.5, help='define value of dropout probability')
+    arg_parser.add_argument(f'-{suffix}n_attention_heads', dest=f'{suffix}n_attention_heads', action='store',
+                            type=int, default=1, help='define number of attention heads')
+    arg_parser.add_argument(f'-{suffix}n_beams', dest=f'{suffix}n_beams', action='store',
+                            type=int, default=1, help='define number of beams')
+    arg_parser.add_argument(f'-{suffix}n_hidden_layers', dest=f'{suffix}n_hidden_layers', action='store',
+                            type=int, default=9, help='define number of hidden layers')
+    arg_parser.add_argument(f'-{suffix}rnn', dest=f'{suffix}rnn', action='store',
+                            type=str, default='lstm', help='define type of recurrent layer')
+    arg_parser.add_argument(f'-{suffix}n_rnn_layers', dest=f'{suffix}n_rnn_layers', action='store',
+                            type=int, default=3, help='define number of recurrent layers')
+
+
+def check_gene_classifier_hyperparameters(
+        args_dict: Dict[str, str],
+        suffix: str = ''
+) -> None:
+    # check model selected
+    if args_dict[f'{suffix}model_selected'] not in ['dna_bert']:
+        raise Exception('select one of these recurrent layers: ["dna_bert"]')
+
+    # check tokenizer selected
+    if args_dict['tokenizer_selected'] not in ['dna_bert', 'dna_bert_n']:
+        raise Exception('select one of these recurrent layers: ["dna_bert", "dna_bert_n"]')
+
+    # check recurrent layer selected
+    if args_dict[f'{suffix}rnn'] not in ['lstm', 'gru']:
+        raise Exception('select one of these recurrent layers: ["lstm", "gru"]')
+
+
+def init_hyperparameters_dict(
+        args_dict: Dict[str, str],
+        suffix: str = ''
+) -> Dict[str, any]:
+    return {
+        'hidden_size': args_dict[f'{suffix}hidden_size'],
+        'dropout': args_dict[f'{suffix}dropout'],
+        'n_attention_heads': args_dict[f'{suffix}n_attention_heads'],
+        'n_beams': args_dict[f'{suffix}n_beams'],
+        'n_hidden_layers': args_dict[f'{suffix}n_hidden_layers'],
+        'rnn': args_dict[f'{suffix}rnn'],
+        'n_rnn_layers': args_dict[f'{suffix}n_rnn_layers']
+    }
+
+
+def train_gene_classifier(
         len_read: int,
         len_overlap: int,
         len_kmer: int,
@@ -54,16 +108,17 @@ def main(
         tokenizer_selected=tokenizer_selected,
         hyperparameter=hyperparameter
     )
+    print(f'Test name: {test_name}')
 
     # check if this configuration is already tested
     if not test_check(task=TASK, model_name=model_selected, parent_name=test_name):
+        print(f'Initialization of the test...')
         # create folders and get path
         log_path, model_path = create_folders(
             task=TASK,
             model_name=model_selected,
             parent_name=test_name
         )
-
         # init loggers
         logger: logging.Logger = setup_logger(
             'logger',
@@ -73,7 +128,6 @@ def main(
             'train',
             os.path.join(log_path, 'train.log')
         )
-
         # init tokenizer
         tokenizer = None
         if tokenizer_selected == 'dna_bert':
@@ -288,8 +342,10 @@ def main(
 
 
 if __name__ == '__main__':
+    # init parser for inputs
     parser = argparse.ArgumentParser()
 
+    # general parameters
     parser.add_argument('-len_read', dest='len_read', action='store',
                         type=int, default=150, help='define length of reads')
     parser.add_argument('-len_overlap', dest='len_overlap', action='store',
@@ -297,56 +353,34 @@ if __name__ == '__main__':
     parser.add_argument('-len_kmer', dest='len_kmer', action='store',
                         type=int, default=6, help='define length of kmers')
     parser.add_argument('-n_words', dest='n_words', action='store',
-                        type=int, default=20, help='number of kmers inside a sentence')
-    parser.add_argument('-model_selected', dest='model_selected', action='store',
-                        type=str, default='dna_bert', help='select the model to be used')
+                        type=int, default=30, help='number of kmers inside a sentence')
     parser.add_argument('-tokenizer_selected', dest='tokenizer_selected', action='store',
-                        type=str, default='dna_bert', help='select the tokenizer to be used')
+                        type=str, default='dna_bert_n', help='select the tokenizer to be used')
     parser.add_argument('-batch_size', dest='batch_size', action='store',
                         type=int, default=256, help='define batch size')
-    parser.add_argument('-hidden_size', dest='hidden_size', action='store',
-                        type=int, default=768, help='define number of hidden channels')
-    parser.add_argument('-dropout', dest='dropout', action='store',
-                        type=float, default=0.5, help='define value of dropout probability')
-    parser.add_argument('-n_attention_heads', dest='n_attention_heads', action='store',
-                        type=int, default=12, help='define number of attention heads')
-    parser.add_argument('-n_beams', dest='n_beams', action='store',
-                        type=int, default=1, help='define number of beams')
-    parser.add_argument('-n_hidden_layers', dest='n_hidden_layers', action='store',
-                        type=int, default=12, help='define number of hidden layers')
-    parser.add_argument('-rnn', dest='rnn', action='store',
-                        type=str, default='lstm', help='define type of recurrent layer')
-    parser.add_argument('-n_rnn_layers', dest='n_rnn_layers', action='store',
-                        type=int, default=2, help='define number of recurrent layers')
+
+    # gene classifier parameters
+    define_input_args_model_hyperparameters(arg_parser=parser)
+
+    # grid search parameter
     parser.add_argument('-grid_search', dest='grid_search', action='store', type=str2bool,
                         default=False, help='set true if this script is launching from grid_search script')
 
+    # parse arguments
     args = parser.parse_args()
 
-    # check model selected
-    if args.model_selected not in ['dna_bert']:
-        raise Exception('select one of these recurrent layers: ["dna_bert"]')
+    # check value of model hyperparameters
+    check_gene_classifier_hyperparameters(
+        args_dict=vars(args)
+    )
 
-    # check tokenizer selected
-    if args.tokenizer_selected not in ['dna_bert', 'dna_bert_n']:
-        raise Exception('select one of these recurrent layers: ["dna_bert", "dna_bert_n"]')
+    # init hyperparameters config
+    config: Dict[str, any] = init_hyperparameters_dict(
+        args_dict=vars(args)
+    )
 
-    # check recurrent layer selected
-    if args.rnn not in ['lstm', 'gru']:
-        raise Exception('select one of these recurrent layers: ["lstm", "gru"]')
-
-    # init hyperparameter
-    config: Dict[str, any] = {
-        'hidden_size': args.hidden_size,
-        'dropout': args.dropout,
-        'n_attention_heads': args.n_attention_heads,
-        'n_beams': args.n_beams,
-        'n_hidden_layers': args.n_hidden_layers,
-        'rnn': args.rnn,
-        'n_rnn_layers': args.n_rnn_layers,
-    }
-
-    main(
+    # execute main
+    train_gene_classifier(
         len_read=args.len_read,
         len_overlap=args.len_overlap,
         len_kmer=args.len_kmer,
