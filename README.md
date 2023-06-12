@@ -1,10 +1,22 @@
-# Index
+# Table of Contents
 
-## Introduction
+* [Introduction](#introduction)
+* [Requirements](#requirements)
+  * [Download files used](#download-files-used)
+* [Gene classifier model](#gene-classifier-model)
+* [Gene fusion model](#gene-fusion-model)
+* [Results](#results)
+* [Citations of works used](#citations-of-works-used)
 
-## Requirements
+# Introduction
 
-Install DNABert form GitHub repository.
+# Requirements
+
+The requirements for using the project are as follows:
+* Unix-like operating system.
+* Anaconda environment with version of Python at least 3.8.
+
+Below are the commands to install DNABert from the official repository.
 
 ```shell
 git clone https://github.com/jerryji1993/DNABERT
@@ -12,23 +24,31 @@ cd DNABERT
 python3 -m pip install --editable .
 cd examples
 cd ../..
-
 mv DNABERT/src/transformers ./transformers
 rm -r DNABERT
 ```
 
-Install other packages.
+Next, you need to install pytorch with CUDA support. 
+The version of Cuda used for the development of this project is **cu118**.
 
 ```shell
 CUDA_VERSION=cu118
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+pip3 install torch torchvision torchaudio \
+  --index-url https://download.pytorch.org/whl/${CUDA_VERSION}
+```
+
+Finally, it is necessary to install the following libraries.
+
+```shell
 conda install -c conda-forge biopython
 pip install tabulate
-
 apt install genometools
 ```
 
-## Gene classifier model
+## Download files used
+Following are the instructions needed to download the genomic data used to train and evaluate the models.
+
+# Gene classifier model
 The first model that is defined within this project is the **gene classifier** model. 
 The goal of this model is to correctly classify sentences in the source gene. 
 More formally, we define a sentence as a sentence consisting of *n* words, where each word is a *kmer*.
@@ -42,7 +62,7 @@ to generate the sentence.
 The following are the input parameters of the ```train_gene_classifier.py``` script, which is the script responsible 
 for training and evaluating the gene classification model.
 
-### Parameters
+## Parameters
 * ```len_read```: define length of reads.
 * ```len_overlap```: define length of overlapping between reads.
 * ```len_kmer```: define length of kmers.
@@ -83,4 +103,12 @@ python3 train_gene_classifier.py -len_read 150 \
                                  -dropout 0.5
 ```
 
-## Gene fusion model
+# Gene fusion model
+
+# Results
+
+# Citations of works used
+This section provides citations of all the work used in the development of this project
+* **DNABert**: [Yanrong Ji and others, DNABERT: pre-trained Bidirectional Encoder Representations 
+from Transformers model for DNA-language in genome, Bioinformatics, Volume 37, Issue 15, 1 August 2021, 
+Pages 2112–2120](https://doi.org/10.1093/bioinformatics/btab083)
