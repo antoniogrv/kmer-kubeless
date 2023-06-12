@@ -7,7 +7,7 @@ if __name__ == '__main__':
                 for n_hidden_layer in [7, 9]:
                     for n_rnn_layers in [1, 3, 5, 7]:
                         for n_words in [30]:
-                            command: str = f'python3 {os.path.join(os.getcwd(), "main.py ")}' \
+                            command: str = f'python3 {os.path.join(os.getcwd(), "train_gene_classifier.py ")}' \
                                            f'-len_read 150 ' \
                                            f'-len_overlap 0 ' \
                                            f'-len_kmer 6 ' \
