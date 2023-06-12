@@ -7,7 +7,10 @@ import logging
 import torch
 import os
 
-from train_gene_classifier import main as train_gene_classifier
+from train_gene_classifier import define_input_args_model_hyperparameters
+from train_gene_classifier import check_gene_classifier_hyperparameters
+from train_gene_classifier import init_hyperparameters_dict
+from train_gene_classifier import train_gene_classifier
 
 from utils import SEPARATOR
 from utils import str2bool
@@ -35,8 +38,6 @@ def main(
         hyperparameter: Dict[str, any],
         grid_search: bool
 ):
-
-    """
     # generate test name
     test_name: str = create_test_name(
         len_read=len_read,
@@ -59,7 +60,6 @@ def main(
         hyperparameter=gc_hyperparameter,
         grid_search=True
     )
-    """
 
 
 if __name__ == '__main__':
@@ -72,29 +72,19 @@ if __name__ == '__main__':
     parser.add_argument('-len_kmer', dest='len_kmer', action='store',
                         type=int, default=6, help='define length of kmers')
     parser.add_argument('-n_words', dest='n_words', action='store',
-                        type=int, default=20, help='number of kmers inside a sentence')
+                        type=int, default=30, help='number of kmers inside a sentence')
     parser.add_argument('-tokenizer_selected', dest='tokenizer_selected', action='store',
-                        type=str, default='dna_bert', help='select the tokenizer to be used')
-
-    # gene classifier parameters
-    parser.add_argument('-gc_model_selected', dest='gc_model_selected', action='store',
-                        type=str, default='dna_bert', help='select the model to be used')
-    parser.add_argument('-gc_hidden_size', dest='gc_hidden_size', action='store',
-                        type=int, default=768, help='define number of hidden channels')
-    parser.add_argument('-gc_n_attention_heads', dest='gc_n_attention_heads', action='store',
-                        type=int, default=1, help='define number of attention heads')
-    parser.add_argument('-gc_n_beams', dest='gc_n_beams', action='store',
-                        type=int, default=1, help='define number of beams')
-    parser.add_argument('-gc_n_hidden_layers', dest='gc_n_hidden_layers', action='store',
-                        type=int, default=9, help='define number of hidden layers')
-    parser.add_argument('-gc_rnn', dest='gc_rnn', action='store',
-                        type=str, default='lstm', help='define type of recurrent layer')
-    parser.add_argument('-gc_n_rnn_layers', dest='gc_n_rnn_layers', action='store',
-                        type=int, default=3, help='define number of recurrent layers')
-
-    # fusion classifier parameters
+                        type=str, default='dna_bert_n', help='select the tokenizer to be used')
     parser.add_argument('-batch_size', dest='batch_size', action='store',
                         type=int, default=256, help='define batch size')
+
+    # gene classifier parameters
+    define_input_args_model_hyperparameters(
+        arg_parser=parser,
+        suffix='gc_'
+    )
+
+    # fusion classifier parameters
     parser.add_argument('-dropout', dest='dropout', action='store',
                         type=float, default=0.5, help='define value of dropout probability')
 
@@ -104,28 +94,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # check tokenizer selected
-    if args.tokenizer_selected not in ['dna_bert', 'dna_bert_n']:
-        raise Exception('select one of these recurrent layers: ["dna_bert", "dna_bert_n"]')
+    # check gene classifier hyperparameters
+    check_gene_classifier_hyperparameters(
+        args_dict=vars(args),
+        suffix='gc_'
+    )
 
-    # check gene model selected
-    if args.gc_model_selected not in ['dna_bert']:
-        raise Exception('select one of these recurrent layers: ["dna_bert"]')
-
-    # check gene recurrent layer selected
-    if args.gc_rnn not in ['lstm', 'gru']:
-        raise Exception('select one of these recurrent layers: ["lstm", "gru"]')
-
-    # init hyperparameter
-    gc_config: Dict[str, any] = {
-        'hidden_size': args.gc_hidden_size,
-        'dropout': args.dropout,
-        'n_attention_heads': args.gc_n_attention_heads,
-        'n_beams': args.gc_n_beams,
-        'n_hidden_layers': args.gc_n_hidden_layers,
-        'rnn': args.gc_rnn,
-        'n_rnn_layers': args.gc_n_rnn_layers,
-    }
+    # init gene classifier hyperparameter
+    gc_config: Dict[str, any] = init_hyperparameters_dict(
+        args_dict=vars(args),
+        suffix='gc_'
+    )
 
     main(
         len_read=args.len_read,
