@@ -1,8 +1,10 @@
 /.idea/
 
+# tools
 /DNABERT/
 /6-new-12w-0/
 /transformers/
+/fusim-0.2.2/
 
 # generated datas
 /data/processed_dir/
