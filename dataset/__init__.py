@@ -1,1 +1,1 @@
-from dataset.dataset import DNADataset
+from dataset._transcript_dataset import TranscriptDataset
