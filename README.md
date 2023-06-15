@@ -15,6 +15,7 @@
 The requirements for using the project are as follows:
 * Unix-like operating system.
 * Anaconda environment with version of Python at least 3.8.
+* Java version 1.6 or greater.
 
 Below are the commands to install DNABert from the official repository.
 
@@ -26,6 +27,14 @@ cd examples
 cd ../..
 mv DNABERT/src/transformers ./transformers
 rm -r DNABERT
+```
+
+The following are the commands needed to be able to install the Fusim tool.
+
+```shell
+wget https://github.com/aebruno/fusim/raw/master/releases/fusim-0.2.2-bin.zip
+unzip fusim-0.2.2-bin.zip
+rm fusim-0.2.2-bin.zip
 ```
 
 Next, you need to install pytorch with CUDA support. 
@@ -51,7 +60,8 @@ Following are the instructions needed to download the genomic data used to train
 # Gene classifier model
 The first model that is defined within this project is the **gene classifier** model. 
 The goal of this model is to correctly classify sentences in the source gene. 
-More formally, we define a sentence as a sentence consisting of *n* words, where each word is a *kmer*.
+More formally, we define a sentence as a string consisting of *n* words each 
+separated by space, where each word is a *kmer*.
 
 Starting with a read, we generate all possible kmers, of length ```len_kmer```, of the read. 
 Let ```n_words``` be the number of kmers that make up a sentence, then all possible subsets of consecutive 
@@ -111,4 +121,6 @@ python3 train_gene_classifier.py -len_read 150 \
 This section provides citations of all the work used in the development of this project
 * **DNABert**: [Yanrong Ji and others, DNABERT: pre-trained Bidirectional Encoder Representations 
 from Transformers model for DNA-language in genome, Bioinformatics, Volume 37, Issue 15, 1 August 2021, 
-Pages 2112–2120](https://doi.org/10.1093/bioinformatics/btab083)
+Pages 2112–2120](https://doi.org/10.1093/bioinformatics/btab083).
+* **Fusim**: [Bruno, A.E., Miecznikowski, J.C., Qin, M. et al. FUSIM: a software tool for simulating 
+fusion transcripts. BMC Bioinformatics 14, 13 (2013)](https://doi.org/10.1186/1471-2105-14-13).
