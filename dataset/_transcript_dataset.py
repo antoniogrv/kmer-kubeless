@@ -2,7 +2,6 @@ from typing import Hashable
 from pandas import Series
 from typing import Union
 from typing import Tuple
-from typing import final
 from typing import Dict
 from typing import List
 
@@ -28,10 +27,6 @@ from dataset._utils import split_dataset_on_processes
 from dataset._utils import split_reads_file_on_processes
 from dataset._utils import generate_sentences_from_kmers
 from dataset._utils import generate_kmers_from_sequences
-
-DATA_DIR: final = os.path.join(os.getcwd(), 'data')
-TRANSCRIPTS_DIR: final = os.path.join(DATA_DIR, 'transcripts')
-READS_DIR: final = os.path.join(DATA_DIR, 'reads')
 
 
 class TranscriptDataset(Dataset):
