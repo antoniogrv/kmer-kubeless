@@ -9,7 +9,7 @@ import os
 
 from tokenizer import DNABertTokenizer
 
-from dataset import DNADataset
+from dataset import TranscriptDataset
 from torch.utils.data import DataLoader
 
 from model import Model
@@ -42,18 +42,18 @@ def define_input_args_model_hyperparameters(
                             type=str, default='dna_bert', help='select the model to be used')
     arg_parser.add_argument(f'-{suffix}hidden_size', dest=f'{suffix}hidden_size', action='store',
                             type=int, default=768, help='define number of hidden channels')
-    arg_parser.add_argument(f'-{suffix}dropout', dest=f'{suffix}dropout', action='store',
-                            type=float, default=0.5, help='define value of dropout probability')
-    arg_parser.add_argument(f'-{suffix}n_attention_heads', dest=f'{suffix}n_attention_heads', action='store',
-                            type=int, default=1, help='define number of attention heads')
-    arg_parser.add_argument(f'-{suffix}n_beams', dest=f'{suffix}n_beams', action='store',
-                            type=int, default=1, help='define number of beams')
     arg_parser.add_argument(f'-{suffix}n_hidden_layers', dest=f'{suffix}n_hidden_layers', action='store',
                             type=int, default=9, help='define number of hidden layers')
     arg_parser.add_argument(f'-{suffix}rnn', dest=f'{suffix}rnn', action='store',
                             type=str, default='lstm', help='define type of recurrent layer')
     arg_parser.add_argument(f'-{suffix}n_rnn_layers', dest=f'{suffix}n_rnn_layers', action='store',
                             type=int, default=3, help='define number of recurrent layers')
+    arg_parser.add_argument(f'-{suffix}n_attention_heads', dest=f'{suffix}n_attention_heads', action='store',
+                            type=int, default=1, help='define number of attention heads')
+    arg_parser.add_argument(f'-{suffix}n_beams', dest=f'{suffix}n_beams', action='store',
+                            type=int, default=1, help='define number of beams')
+    arg_parser.add_argument(f'-{suffix}dropout', dest=f'{suffix}dropout', action='store',
+                            type=float, default=0.5, help='define value of dropout probability')
 
 
 def check_gene_classifier_hyperparameters(
@@ -143,12 +143,12 @@ def train_gene_classifier(
             )
 
         # load train and validation dataset
-        train_dataset = DNADataset(
+        train_dataset = TranscriptDataset(
             root_dir=os.path.join(os.getcwd(), 'data'),
             tokenizer=tokenizer.get_tokenizer,
             dataset_type='train'
         )
-        val_dataset = DNADataset(
+        val_dataset = TranscriptDataset(
             root_dir=os.path.join(os.getcwd(), 'data'),
             tokenizer=tokenizer.get_tokenizer,
             dataset_type='val'
@@ -282,7 +282,7 @@ def train_gene_classifier(
         )
 
     # load test dataset
-    test_dataset = DNADataset(
+    test_dataset = TranscriptDataset(
         root_dir=os.path.join(os.getcwd(), 'data'),
         tokenizer=tokenizer.get_tokenizer,
         dataset_type='test'
