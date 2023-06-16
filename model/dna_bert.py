@@ -19,6 +19,8 @@ from model import Model
 class DNABert(Model):
     def __init__(
             self,
+            model_name: str,
+            model_path: str,
             hyperparameter: Dict[str, any],
             weights: Optional[torch.Tensor] = None
     ):
@@ -42,7 +44,7 @@ class DNABert(Model):
         )
 
         # call super class
-        super().__init__(hyperparameter, weights)
+        super().__init__(model_name, model_path, hyperparameter, weights)
 
         # create model from configuration
         self.bert = BertModel(self.__config)
