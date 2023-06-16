@@ -13,19 +13,16 @@ from dataset import TranscriptDataset
 from torch.utils.data import DataLoader
 
 from model import Model
-from model.dna_bert import DNABert
+from model import DNABert
 
 from torch.optim import AdamW
 from sklearn.utils import class_weight
-from model import train
-from model import predict
 from sklearn.metrics import classification_report
 
 from utils import SEPARATOR
 from utils import str2bool
 from utils import create_test_name
 from utils import test_check
-from utils import delete_checkpoints
 from utils import create_folders
 from utils import setup_logger
 from utils import save_result
@@ -47,7 +44,7 @@ def define_input_args_model_hyperparameters(
     arg_parser.add_argument(f'-{suffix}rnn', dest=f'{suffix}rnn', action='store',
                             type=str, default='lstm', help='define type of recurrent layer')
     arg_parser.add_argument(f'-{suffix}n_rnn_layers', dest=f'{suffix}n_rnn_layers', action='store',
-                            type=int, default=3, help='define number of recurrent layers')
+                            type=int, default=5, help='define number of recurrent layers')
     arg_parser.add_argument(f'-{suffix}n_attention_heads', dest=f'{suffix}n_attention_heads', action='store',
                             type=int, default=1, help='define number of attention heads')
     arg_parser.add_argument(f'-{suffix}n_beams', dest=f'{suffix}n_beams', action='store',
@@ -145,11 +142,19 @@ def train_gene_classifier(
         # load train and validation dataset
         train_dataset = TranscriptDataset(
             root_dir=os.path.join(os.getcwd(), 'data'),
+            len_read=len_read,
+            len_overlap=len_overlap,
+            len_kmer=len_kmer,
+            n_words=n_words,
             tokenizer=tokenizer.get_tokenizer,
             dataset_type='train'
         )
         val_dataset = TranscriptDataset(
             root_dir=os.path.join(os.getcwd(), 'data'),
+            len_read=len_read,
+            len_overlap=len_overlap,
+            len_kmer=len_kmer,
+            n_words=n_words,
             tokenizer=tokenizer.get_tokenizer,
             dataset_type='val'
         )
@@ -208,6 +213,8 @@ def train_gene_classifier(
 
         # define model
         model: Model = DNABert(
+            model_name='model',
+            model_path=model_path,
             hyperparameter=hyperparameter,
             weights=class_weights
         )
@@ -226,20 +233,15 @@ def train_gene_classifier(
         model.to(device)
 
         # train it
-        train(
-            model=model,
+        model.train_model(
             train_loader=train_loader,
             optimizer=optimizer,
-            model_path=model_path,
             device=device,
             epochs=1000,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
         )
-
-        # delete checkpoint
-        delete_checkpoints(model_path=model_path)
 
         # close loggers
         close_loggers([train_logger, logger])
@@ -284,6 +286,10 @@ def train_gene_classifier(
     # load test dataset
     test_dataset = TranscriptDataset(
         root_dir=os.path.join(os.getcwd(), 'data'),
+        len_read=len_read,
+        len_overlap=len_overlap,
+        len_kmer=len_kmer,
+        n_words=n_words,
         tokenizer=tokenizer.get_tokenizer,
         dataset_type='test'
     )
@@ -306,8 +312,7 @@ def train_gene_classifier(
     )
 
     # test model
-    y_true, y_pred = predict(
-        model=model,
+    y_true, y_pred = model.predict(
         test_loader=test_loader,
         device=device
     )
@@ -357,7 +362,7 @@ if __name__ == '__main__':
     parser.add_argument('-tokenizer_selected', dest='tokenizer_selected', action='store',
                         type=str, default='dna_bert_n', help='select the tokenizer to be used')
     parser.add_argument('-batch_size', dest='batch_size', action='store',
-                        type=int, default=256, help='define batch size')
+                        type=int, default=512, help='define batch size')
 
     # gene classifier parameters
     define_input_args_model_hyperparameters(arg_parser=parser)
