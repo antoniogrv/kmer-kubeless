@@ -107,6 +107,10 @@ def train_gene_classifier(
     )
     print(f'Test name: {test_name}')
 
+    # set seed for reproducibility
+    torch.manual_seed(42)
+    np.random.seed(42)
+
     # check if this configuration is already tested
     if not test_check(task=TASK, model_name=model_selected, parent_name=test_name):
         print(f'Initialization of the test...')
