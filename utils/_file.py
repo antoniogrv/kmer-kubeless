@@ -13,8 +13,3 @@ def create_folders(task: str, model_name: str, parent_name: str):
         os.makedirs(model_path)
 
     return log_path, model_path
-
-
-def delete_checkpoints(model_path: str):
-    for model_checkpoint in glob(os.path.join(model_path, 'model_*.h5')):
-        os.remove(model_checkpoint)

@@ -8,7 +8,6 @@ from utils._test import evaluate_check
 
 # file and directory utils
 from utils._file import create_folders
-from utils._file import delete_checkpoints
 
 # metric utils
 from utils._metric import save_result
