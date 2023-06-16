@@ -131,3 +131,26 @@ def generate_sentences_from_kmers(
             sentences_dataset = pd.concat([sentences_dataset, row_dataset])
 
     return sentences_dataset
+
+
+def fusion_simulator(
+        fasta_path: str,
+        text_path: str,
+        n_fusions: int,
+        genes_list: List[str]
+) -> None:
+    # init path of fusion simulator directory
+    fusion_simulator_dir: str = os.path.join(os.getcwd(), 'fusim-0.2.2')
+    # init command
+    command: str = f'java -jar {os.path.join(fusion_simulator_dir, "fusim.jar")} ' \
+                   f'-g {os.path.join(fusion_simulator_dir, "refFlat.txt")} ' \
+                   f'-r {os.path.join(fusion_simulator_dir, "hg19.fa")} ' \
+                   f'-f {fasta_path} ' \
+                   f'-t {text_path} ' \
+                   f'-n {n_fusions} ' \
+                   f'-1 {",".join(genes_list)} ' \
+                   f'-2 {",".join(genes_list)} ' \
+                   f'--auto-correct-orientation ' \
+                   f'--cds-only'
+    # execute command
+    os.system(command)
