@@ -35,6 +35,19 @@ The following are the commands needed to be able to install the Fusim tool.
 wget https://github.com/aebruno/fusim/raw/master/releases/fusim-0.2.2-bin.zip
 unzip fusim-0.2.2-bin.zip
 rm fusim-0.2.2-bin.zip
+
+wget -O refFlat.txt.gz http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/refFlat.txt
+gunzip refFlat.txt.gz
+mv refFlat.txt fusim-0.2.2/refFlat.txt
+
+wget ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/chromFa.tar.gz
+tar -xzf chromFa.tar.gz
+cat chr*.fa > fusim-0.2.2/hg19.fa
+rm chromFa.tar.gz
+rm chr*.fa
+
+sudo apt install samtools
+samtools faidx fusim-0.2.2/hg19.fa
 ```
 
 Next, you need to install pytorch with CUDA support. 
