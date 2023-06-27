@@ -131,7 +131,7 @@ python3 train_gene_classifier.py -len_read 150 \
 # Results
 
 # Citations of works used
-This section provides citations of all the work used in the development of this project
+This section provides citations of all the work used in the development of this project.
 * **DNABert**: [Yanrong Ji and others, DNABERT: pre-trained Bidirectional Encoder Representations 
 from Transformers model for DNA-language in genome, Bioinformatics, Volume 37, Issue 15, 1 August 2021, 
 Pages 2112–2120](https://doi.org/10.1093/bioinformatics/btab083).
