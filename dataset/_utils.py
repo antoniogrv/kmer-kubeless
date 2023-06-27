@@ -4,6 +4,7 @@ from typing import List
 from typing import Dict
 
 from Bio import SeqIO
+from tqdm import tqdm
 import pandas as pd
 import os
 
@@ -134,23 +135,24 @@ def generate_sentences_from_kmers(
 
 
 def fusion_simulator(
-        fasta_path: str,
-        text_path: str,
+        fasta_format_path: str,
+        text_format_path: str,
         n_fusions: int,
         genes_list: List[str]
 ) -> None:
     # init path of fusion simulator directory
     fusion_simulator_dir: str = os.path.join(os.getcwd(), 'fusim-0.2.2')
-    # init command
-    command: str = f'java -jar {os.path.join(fusion_simulator_dir, "fusim.jar")} ' \
-                   f'-g {os.path.join(fusion_simulator_dir, "refFlat.txt")} ' \
-                   f'-r {os.path.join(fusion_simulator_dir, "hg19.fa")} ' \
-                   f'-f {fasta_path} ' \
-                   f'-t {text_path} ' \
-                   f'-n {n_fusions} ' \
-                   f'-1 {",".join(genes_list)} ' \
-                   f'-2 {",".join(genes_list)} ' \
-                   f'--auto-correct-orientation ' \
-                   f'--cds-only'
-    # execute command
-    os.system(command)
+    for gene in tqdm(genes_list, desc=f'Execute Fusion Simulator...', total=len(genes_list)):
+        genes_list_tmp: List[str] = genes_list.copy()
+        genes_list_tmp.remove(gene)
+        # init command
+        command: str = f'java -jar {os.path.join(fusion_simulator_dir, "fusim.jar")} ' \
+                       f'-g {os.path.join(fusion_simulator_dir, "refFlat.txt")} ' \
+                       f'-r {os.path.join(fusion_simulator_dir, "hg19.fa")} ' \
+                       f'-f {fasta_format_path.format(gene=gene)} ' \
+                       f'-t {text_format_path.format(gene=gene)} ' \
+                       f'-n {n_fusions} ' \
+                       f'-1 {gene} ' \
+                       f'-2 {",".join(genes_list_tmp)} ' \
+                       f'--auto-correct-orientation'
+        os.system(command)
