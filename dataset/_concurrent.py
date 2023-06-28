@@ -3,11 +3,10 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 
-from Bio.SeqRecord import SeqRecord
-from Bio import SeqIO
-from tqdm import tqdm
 import pandas as pd
 import os
+
+from Bio import SeqIO
 
 
 def split_reads_file_on_processes(
@@ -18,7 +17,6 @@ def split_reads_file_on_processes(
     n_files: int = len(reads_files)
     n_files_for_process: int = n_files // n_proc
     rest: int = n_files % n_proc
-
     # split files on different process
     fasta_files_for_each_process: List[List[str]] = []
     rest_added: int = 0
@@ -43,7 +41,6 @@ def split_dataset_on_processes(
     n_rows: int = len(dataset)
     n_rows_for_process: int = n_rows // n_proc
     rest: int = n_rows % n_proc
-
     # split files on different process
     rows_for_each_process: List[(int, int)] = []
     rest_added: int = 0
