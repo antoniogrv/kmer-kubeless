@@ -7,11 +7,12 @@
 /fusim-0.2.2/
 
 # generated datas
-/data/chimeric/
-/data/fusim/
 /data/processed_dir/
 /data/transcripts/
+/data/art_*/
+/data/fusim/
 /data/reads/
+/data/check/
 /data/kmer_*.txt
 
 # results
