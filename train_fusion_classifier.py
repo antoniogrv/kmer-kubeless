@@ -7,6 +7,9 @@ import logging
 import torch
 import os
 
+from dataset import FusionDataset
+from torch.utils.data import DataLoader
+
 from train_gene_classifier import define_input_args_model_hyperparameters
 from train_gene_classifier import check_gene_classifier_hyperparameters
 from train_gene_classifier import init_hyperparameters_dict
@@ -16,7 +19,6 @@ from utils import SEPARATOR
 from utils import str2bool
 from utils import create_test_name
 from utils import test_check
-from utils import delete_checkpoints
 from utils import create_folders
 from utils import setup_logger
 from utils import save_result
@@ -38,6 +40,7 @@ def main(
         hyperparameter: Dict[str, any],
         grid_search: bool
 ):
+    """
     # generate test name
     test_name: str = create_test_name(
         len_read=len_read,
@@ -47,18 +50,46 @@ def main(
         tokenizer_selected=tokenizer_selected,
         hyperparameter={**gc_hyperparameter, **hyperparameter}
     )
+    print(f'Test name: {test_name}')
 
-    # check if gene classifier is trained, otherwise train it
-    train_gene_classifier(
+    # check if this configuration is already tested
+    if not test_check(task=TASK, model_name=model_selected, parent_name=test_name):
+        print(f'Initialization of the test...')
+        # check if gene classifier is trained, otherwise train it
+        train_gene_classifier(
+            len_read=len_read,
+            len_overlap=len_overlap,
+            len_kmer=len_kmer,
+            n_words=n_words,
+            model_selected=gc_model_selected,
+            tokenizer_selected=tokenizer_selected,
+            batch_size=batch_size,
+            hyperparameter=gc_hyperparameter,
+            grid_search=True
+        )
+        # create folders and get path
+        log_path, model_path = create_folders(
+            task=TASK,
+            model_name=model_selected,
+            parent_name=test_name
+        )
+        # init loggers
+        logger: logging.Logger = setup_logger(
+            'logger',
+            os.path.join(log_path, 'logger.log')
+        )
+        train_logger: logging.Logger = setup_logger(
+            'train',
+            os.path.join(log_path, 'train.log')
+        )
+    """
+
+    train_dataset = FusionDataset(
+        root_dir=os.path.join(os.getcwd(), 'data'),
         len_read=len_read,
-        len_overlap=len_overlap,
         len_kmer=len_kmer,
         n_words=n_words,
-        model_selected=gc_model_selected,
-        tokenizer_selected=tokenizer_selected,
-        batch_size=batch_size,
-        hyperparameter=gc_hyperparameter,
-        grid_search=True
+        dataset_type='train'
     )
 
 
@@ -76,7 +107,7 @@ if __name__ == '__main__':
     parser.add_argument('-tokenizer_selected', dest='tokenizer_selected', action='store',
                         type=str, default='dna_bert_n', help='select the tokenizer to be used')
     parser.add_argument('-batch_size', dest='batch_size', action='store',
-                        type=int, default=256, help='define batch size')
+                        type=int, default=512, help='define batch size')
 
     # gene classifier parameters
     define_input_args_model_hyperparameters(
