@@ -46,19 +46,22 @@ class TranscriptDataset(Dataset):
         self.__transcripts_dir: str = os.path.join(self.__root_dir, 'transcripts')
         self.__reads_dir: str = os.path.join(self.__root_dir, 'reads')
         self.__processed_dir: str = os.path.join(self.__root_dir, 'processed_dir')
-        self.__labels_dict_path: str = os.path.join(self.__processed_dir, 'labels.pkl')
-        self.__kmers_dataset_path: str = os.path.join(self.__processed_dir, f'kmer_{len_kmer}.csv')
+        self.__labels_dict_path: str = os.path.join(self.__processed_dir, 'transcript_labels.pkl')
+        self.__kmers_dataset_path: str = os.path.join(
+            self.__processed_dir,
+            f'transcript_{len_read}_kmer_{len_kmer}.csv'
+        )
         self.__train_dataset_path: str = os.path.join(
             self.__processed_dir,
-            f'kmer_{len_kmer}_n_words_{n_words}_train.csv'
+            f'transcript_{len_read}_kmer_{len_kmer}_n_words_{n_words}_train.csv'
         )
         self.__val_dataset_path: str = os.path.join(
             self.__processed_dir,
-            f'kmer_{len_kmer}_n_words_{n_words}_val.csv'
+            f'transcript_{len_read}_kmer_{len_kmer}_n_words_{n_words}_val.csv'
         )
         self.__test_dataset_path: str = os.path.join(
             self.__processed_dir,
-            f'kmer_{len_kmer}_n_words_{n_words}_test.csv'
+            f'transcript_{len_read}_kmer_{len_kmer}_n_words_{n_words}_test.csv'
         )
 
         # check dataset type
@@ -119,7 +122,7 @@ class TranscriptDataset(Dataset):
             n_kmers: int = self.__len_read + 1 - self.__len_kmer
             columns: List[str] = [f'k_{i}' for i in range(n_kmers)]
             columns.append('label')
-            self.__kmers_dataset: pd.DataFrame = pd.DataFrame(
+            kmers_dataset: pd.DataFrame = pd.DataFrame(
                 columns=columns
             )
             # call generate kmers from sequence on multi processes
@@ -134,10 +137,10 @@ class TranscriptDataset(Dataset):
                 ), reads_files_for_each_process)
                 # append all local dataset to global dataset
                 for result in results:
-                    self.__kmers_dataset = pd.concat([self.__kmers_dataset, result])
-            self.__kmers_dataset.to_csv(self.__kmers_dataset_path, index=False)
+                    kmers_dataset = pd.concat([kmers_dataset, result])
+            kmers_dataset.to_csv(self.__kmers_dataset_path, index=False)
         else:
-            self.__kmers_dataset: pd.DataFrame = pd.read_csv(self.__kmers_dataset_path)
+            kmers_dataset: pd.DataFrame = pd.read_csv(self.__kmers_dataset_path)
 
         # generate train, val and test set
         self.__n_words: int = n_words
@@ -146,7 +149,7 @@ class TranscriptDataset(Dataset):
                 not os.path.exists(self.__test_dataset_path)):
             # split dataset in train, val and test set
             train_reads_dataset, test_reads_dataset = train_test_split(
-                self.__kmers_dataset,
+                kmers_dataset,
                 test_size=0.1
             )
             train_reads_dataset, val_reads_dataset = train_test_split(
@@ -178,7 +181,7 @@ class TranscriptDataset(Dataset):
         # load dataset
         self.__dataset_path = os.path.join(
             self.__processed_dir,
-            f'kmer_{self.__len_kmer}_n_words_{self.__n_words}_{self.__dataset_type}.csv'
+            f'transcript_{len_read}_kmer_{self.__len_kmer}_n_words_{self.__n_words}_{self.__dataset_type}.csv'
         )
         self.__dataset: pd.DataFrame = pd.read_csv(self.__dataset_path)
         self.__status = self.__dataset.groupby('label')['label'].count()
