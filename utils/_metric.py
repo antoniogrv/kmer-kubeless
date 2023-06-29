@@ -12,7 +12,6 @@ from sklearn.metrics import precision_recall_fscore_support
 def save_result(
         result_csv_path: str,
         len_read: int,
-        len_overlap: int,
         len_kmer: int,
         n_words: int,
         tokenizer_selected: str,
@@ -21,12 +20,12 @@ def save_result(
         y_pred: List[int]
 ):
     # init columns of result df
-    columns = ['len_read', 'len_overlap', 'len_kmer', 'n_words', 'tokenizer_selected']
+    columns = ['len_read', 'len_kmer', 'n_words', 'tokenizer_selected']
     columns += list(hyperparameter.keys())
     columns += ['accuracy', 'precision', 'recall', 'f1-score']
 
     # create row of df
-    values = [len_read, len_overlap, len_kmer, n_words, tokenizer_selected]
+    values = [len_read, len_kmer, n_words, tokenizer_selected]
     values += [hyperparameter[p] for p in hyperparameter.keys()]
     accuracy = balanced_accuracy_score(y_true, y_pred)
     precision, recall, f_score, _ = precision_recall_fscore_support(
