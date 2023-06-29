@@ -1,71 +1,8 @@
-from typing import List
-
-from itertools import product
 import collections
 import os
 
 from transformers.tokenization_utils import PreTrainedTokenizer
 from transformers.tokenization_bert import BasicTokenizer
-
-
-def load_vocab(vocab_file):
-    """Loads a vocabulary file into a dictionary."""
-    vocab = collections.OrderedDict()
-    with open(vocab_file, "r", encoding="utf-8") as reader:
-        tokens = reader.readlines()
-    for index, token in enumerate(tokens):
-        token = token.rstrip("\n")
-        vocab[token] = index
-    return vocab
-
-
-class DNABertTokenizer:
-    def __init__(
-            self,
-            root_dir: str,
-            len_kmer: int = 6,
-            add_n: bool = False,
-            do_lower_case: bool = False,
-            pad_token: str = '[PAD]',
-            unk_token: str = '[UNK]',
-            cls_token: str = '[CLS]',
-            sep_token: str = '[SEP]',
-            mask_token: str = '[MASK]'
-    ):
-        # define path
-        self.__vocab_path = os.path.join(root_dir, f'kmer_{len_kmer}{"_n" if add_n else ""}.txt')
-
-        # check if vocab is defined
-        if not os.path.exists(self.__vocab_path):
-            # create vocab
-            vocabs: List[str] = []
-            words: List[str] = ['A', 'T', 'C', 'G', 'N']
-            if not add_n:
-                words = words[:-1]
-            for comb in product(words, repeat=len_kmer):
-                vocabs.append(''.join(comb))
-            with open(self.__vocab_path, "w") as vocab_file:
-                for special_token in [pad_token, unk_token, cls_token, sep_token, mask_token]:
-                    vocab_file.write(f'{special_token}\n')
-                for vocab in vocabs:
-                    vocab_file.write(f'{vocab}\n')
-
-        self.__tokenizer: PreTrainedTokenizer = MyDNATokenizer(
-            vocab_file=self.__vocab_path,
-            len_kmer=len_kmer,
-            do_lower_case=do_lower_case,
-            unk_token=unk_token,
-            sep_token=sep_token,
-            pad_token=pad_token,
-            cls_token=cls_token,
-            mask_token=mask_token
-        )
-
-        self.t = self.__tokenizer
-
-    @property
-    def get_tokenizer(self) -> PreTrainedTokenizer:
-        return self.__tokenizer
 
 
 class MyDNATokenizer(PreTrainedTokenizer):
@@ -83,8 +20,12 @@ class MyDNATokenizer(PreTrainedTokenizer):
             do_basic_tokenize=True
     """
 
+    def save_vocabulary(self, save_directory):
+        raise NotImplementedError
+
     def __init__(
             self,
+            vocab_name,
             vocab_file,
             len_kmer: int,
             do_lower_case=False,
@@ -122,8 +63,13 @@ class MyDNATokenizer(PreTrainedTokenizer):
             mask_token=mask_token,
             **kwargs,
         )
-        self.max_len_single_sentence = self.max_len - 2  # take into account special tokens
-        self.max_len_sentences_pair = self.max_len - 3  # take into account special tokens
+
+        # save vocab name
+        self.__vocab_name = vocab_name
+
+        # take into account special tokens
+        self.max_len_single_sentence = self.max_len - 2
+        self.max_len_sentences_pair = self.max_len - 3
 
         if not os.path.isfile(vocab_file):
             raise ValueError(
@@ -238,3 +184,6 @@ class MyDNATokenizer(PreTrainedTokenizer):
                 num_pieces = int(len(token_ids_0) // 510) + 1
                 return (len(cls + token_ids_0 + sep) + 2 * (num_pieces - 1)) * [0]
         return len(cls + token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
+
+    def __str__(self):
+        return self.__vocab_name
