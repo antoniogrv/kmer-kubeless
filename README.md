@@ -65,6 +65,7 @@ Finally, it is necessary to install the following libraries.
 conda install -c conda-forge biopython
 pip install tabulate
 pip install checksumdir
+pip install python-dotenv
 apt install genometools
 apt install art-nextgen-simulation-tools
 ```
