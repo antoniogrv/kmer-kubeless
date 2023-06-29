@@ -61,11 +61,11 @@ def check_gene_classifier_hyperparameters(
 ) -> None:
     # check model selected
     if args_dict[f'{suffix}model_selected'] not in ['dna_bert']:
-        raise ValueError('select one of these recurrent layers: ["dna_bert"]')
+        raise ValueError('select one of these models: ["dna_bert"]')
 
     # check tokenizer selected
     if args_dict['tokenizer_selected'] not in ['dna_bert', 'dna_bert_n']:
-        raise ValueError('select one of these recurrent layers: ["dna_bert", "dna_bert_n"]')
+        raise ValueError('select one of these tokenizers: ["dna_bert", "dna_bert_n"]')
 
     # check recurrent layer selected
     if args_dict[f'{suffix}rnn'] not in ['lstm', 'gru']:
