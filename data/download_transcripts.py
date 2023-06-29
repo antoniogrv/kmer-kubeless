@@ -2,6 +2,8 @@ from typing import Final
 from typing import Dict
 from typing import List
 
+from dotenv import load_dotenv
+from tqdm import tqdm
 import requests
 import sys
 import os
@@ -12,14 +14,14 @@ import os
 3 - GET sequence/id/:id https://rest.ensembl.org/documentation/info/sequence_id
 """
 
-GENES_PANEL_PATH: Final = os.path.join(os.getcwd(), 'data', 'genes_panel.txt')
-TRANSCRIPTS_DIR_PATH: Final = os.path.join(os.getcwd(), 'data', 'transcripts')
 SERVER: Final = "https://rest.ensembl.org"
 
 
-def get_id(gene_value: str) -> List[str]:
+def get_ids(
+        gene_value: str
+) -> List[str]:
     # init query
-    ext = f'/xrefs/symbol/homo_sapiens/{gene_value}?object_type=gene'
+    ext: str = f'/xrefs/symbol/homo_sapiens/{gene_value}?object_type=gene'
     # get result
     r = requests.get(
         SERVER + ext,
@@ -41,9 +43,11 @@ def get_id(gene_value: str) -> List[str]:
     return id_list
 
 
-def get_sequences(id_sequence_value: str):
+def get_sequences(
+        id_sequence_value: str
+) -> str:
     # init query
-    ext = f'/sequence/id/{id_sequence_value}?type=cdna;multiple_sequences=1'
+    ext: str = f'/sequence/id/{id_sequence_value}?type=cdna;multiple_sequences=1'
     # get result
     r = requests.get(
         SERVER + ext,
@@ -59,23 +63,38 @@ def get_sequences(id_sequence_value: str):
     return r.text
 
 
-def create_file(gene_value, sequence_value):
-    with open(os.path.join(TRANSCRIPTS_DIR_PATH, f'{gene_value}-output.fastq'), 'a') as fasta_file:
+def create_file(
+        root_dir: str,
+        gene_value: str,
+        sequence_value: str
+) -> None:
+    with open(os.path.join(root_dir, f'{gene_value}.fastq'), 'a') as fasta_file:
         fasta_file.write(sequence_value)
 
 
 if __name__ == '__main__':
+    # init gene dictionary
     gene_dict: Dict[str, List[str]] = {}
+    # init paths
+    load_dotenv(dotenv_path=os.path.join(os.getcwd(), 'data', '.env'))
+    genes_panel_path: str = os.path.join(
+        os.getcwd(),
+        os.getenv('LOCAL_GENES_PANEL_PATH')
+    )
+    transcript_dir_path: str = os.path.join(
+        os.getcwd(),
+        os.getenv('LOCAL_TRANSCRIPT_DIR')
+    )
 
     # check if transcripts dir exists
-    if not os.path.exists(TRANSCRIPTS_DIR_PATH):
-        os.makedirs(TRANSCRIPTS_DIR_PATH)
+    if not os.path.exists(transcript_dir_path):
+        os.makedirs(transcript_dir_path)
 
-    with open(GENES_PANEL_PATH, 'r') as genes_panel_file:
-        for gene in genes_panel_file:
+    with open(genes_panel_path, 'r') as genes_panel_file:
+        for gene in tqdm(genes_panel_file, desc='Downloading the transcripts of the genes...'):
             # remove new line character
             gene: str = gene.rstrip('\n')
-            gene_dict[gene] = get_id(gene)
+            gene_dict[gene] = get_ids(gene)
             for sequence_id in gene_dict[gene]:
                 sequence = get_sequences(sequence_id)
-                create_file(gene, sequence)
+                create_file(transcript_dir_path, gene, sequence)
