@@ -64,8 +64,6 @@ def split_dataset_on_processes(
 def generate_kmers_from_sequences(
         reads_files: List[str],
         dir_path: str,
-        len_read: str,
-        len_overlap: str,
         len_kmer: int,
         labels: Dict[str, int]
 ) -> pd.DataFrame:
@@ -75,7 +73,7 @@ def generate_kmers_from_sequences(
     for reads_file in tqdm(reads_files, total=len(reads_files), desc='Generating kmers...'):
         # open file with SeqIO
         fasta_file = SeqIO.parse(open(
-            os.path.join(dir_path, f'{reads_file}_{len_read}_{len_overlap}.reads')
+            os.path.join(dir_path, f'{reads_file}.reads')
         ), 'fasta')
         # get kmers of all read of file
         for reads in fasta_file:
@@ -222,5 +220,53 @@ def generate_sentences_encoded_from_dataset(
             )
         # append read_inputs to inputs
         inputs.append(read_inputs)
+
+    return inputs
+
+
+def encode_sentences(
+        rows_index: Tuple[int, int],
+        dataset: pd.DataFrame,
+        n_words: int,
+        tokenizer: PreTrainedTokenizer
+) -> List[Dict[str, torch.Tensor]]:
+    # init inputs
+    inputs: List[Dict[str, torch.Tensor]] = []
+    # get start and end indexes
+    start, end = rows_index
+    # get sentences for this process
+    sentences: List[List[str]] = dataset.iloc[start:end, :1].values
+    # tokenizing sequences
+    sentences_tokenized: List[Dict[str, List[int]]] = []
+    for sentence in tqdm(sentences, total=len(sentences), desc='Tokenization of sentences...'):
+        sentences_tokenized.append(
+            tokenizer.encode_plus(
+                sentence[0],
+                padding='max-length',
+                add_special_tokens=True,
+                truncation=True,
+                max_length=n_words + 2
+            )
+        )
+    # extract tensor from sentences tokenized
+    for sentence_tokenized in tqdm(sentences_tokenized,
+                                   total=len(sentences_tokenized),
+                                   desc='Creation of the tensors from the tokenized sentences...'):
+        input_ids: List[int] = sentence_tokenized['input_ids']
+        token_type_ids: List[int] = sentence_tokenized['token_type_ids']
+        attention_mask: List[int] = sentence_tokenized['attention_mask']
+        # zero-pad up to the sequence length.
+        padding_length: int = n_words + 2 - len(input_ids)
+        input_ids: List[int] = input_ids + ([0] * padding_length)
+        attention_mask: List[int] = attention_mask + ([1] * padding_length)
+        token_type_ids: List[int] = token_type_ids + ([0] * padding_length)
+        # append read_input
+        inputs.append(
+            {
+                'input_ids': torch.tensor(input_ids, dtype=torch.long),
+                'attention_mask': torch.tensor(attention_mask, dtype=torch.int),
+                'token_type_ids': torch.tensor(token_type_ids, dtype=torch.int),
+            }
+        )
 
     return inputs
