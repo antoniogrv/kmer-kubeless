@@ -1,3 +1,4 @@
+from typing import Optional
 from typing import Final
 from typing import Dict
 
@@ -7,6 +8,7 @@ import logging
 import torch
 import os
 
+from tokenizer import MyDNATokenizer
 from tokenizer import DNABertTokenizer
 
 from dataset import TranscriptDataset
@@ -38,15 +40,15 @@ def define_input_args_model_hyperparameters(
     arg_parser.add_argument(f'-{suffix}model_selected', dest=f'{suffix}model_selected', action='store',
                             type=str, default='dna_bert', help='select the model to be used')
     arg_parser.add_argument(f'-{suffix}hidden_size', dest=f'{suffix}hidden_size', action='store',
-                            type=int, default=768, help='define number of hidden channels')
+                            type=int, default=1024, help='define number of hidden channels')
     arg_parser.add_argument(f'-{suffix}n_hidden_layers', dest=f'{suffix}n_hidden_layers', action='store',
-                            type=int, default=9, help='define number of hidden layers')
+                            type=int, default=7, help='define number of hidden layers')
     arg_parser.add_argument(f'-{suffix}rnn', dest=f'{suffix}rnn', action='store',
                             type=str, default='lstm', help='define type of recurrent layer')
     arg_parser.add_argument(f'-{suffix}n_rnn_layers', dest=f'{suffix}n_rnn_layers', action='store',
-                            type=int, default=5, help='define number of recurrent layers')
+                            type=int, default=1, help='define number of recurrent layers')
     arg_parser.add_argument(f'-{suffix}n_attention_heads', dest=f'{suffix}n_attention_heads', action='store',
-                            type=int, default=1, help='define number of attention heads')
+                            type=int, default=4, help='define number of attention heads')
     arg_parser.add_argument(f'-{suffix}n_beams', dest=f'{suffix}n_beams', action='store',
                             type=int, default=1, help='define number of beams')
     arg_parser.add_argument(f'-{suffix}dropout', dest=f'{suffix}dropout', action='store',
@@ -59,15 +61,15 @@ def check_gene_classifier_hyperparameters(
 ) -> None:
     # check model selected
     if args_dict[f'{suffix}model_selected'] not in ['dna_bert']:
-        raise Exception('select one of these recurrent layers: ["dna_bert"]')
+        raise ValueError('select one of these recurrent layers: ["dna_bert"]')
 
     # check tokenizer selected
     if args_dict['tokenizer_selected'] not in ['dna_bert', 'dna_bert_n']:
-        raise Exception('select one of these recurrent layers: ["dna_bert", "dna_bert_n"]')
+        raise ValueError('select one of these recurrent layers: ["dna_bert", "dna_bert_n"]')
 
     # check recurrent layer selected
     if args_dict[f'{suffix}rnn'] not in ['lstm', 'gru']:
-        raise Exception('select one of these recurrent layers: ["lstm", "gru"]')
+        raise ValueError('select one of these recurrent layers: ["lstm", "gru"]')
 
 
 def init_hyperparameters_dict(
@@ -87,7 +89,6 @@ def init_hyperparameters_dict(
 
 def train_gene_classifier(
         len_read: int,
-        len_overlap: int,
         len_kmer: int,
         n_words: int,
         model_selected: str,
@@ -99,7 +100,6 @@ def train_gene_classifier(
     # generate test name
     test_name: str = create_test_name(
         len_read=len_read,
-        len_overlap=len_overlap,
         len_kmer=len_kmer,
         n_words=n_words,
         tokenizer_selected=tokenizer_selected,
@@ -120,6 +120,7 @@ def train_gene_classifier(
             model_name=model_selected,
             parent_name=test_name
         )
+
         # init loggers
         logger: logging.Logger = setup_logger(
             'logger',
@@ -130,7 +131,7 @@ def train_gene_classifier(
             os.path.join(log_path, 'train.log')
         )
         # init tokenizer
-        tokenizer = None
+        tokenizer = Optional[MyDNATokenizer]
         if tokenizer_selected == 'dna_bert':
             tokenizer = DNABertTokenizer(
                 root_dir=os.path.join(os.getcwd(), 'data'),
@@ -143,29 +144,28 @@ def train_gene_classifier(
                 add_n=True
             )
 
+        # create dataset configuration
+        dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
+            len_read=len_read,
+            len_kmer=len_kmer,
+            n_words=n_words,
+            tokenizer=tokenizer
+        )
+
         # load train and validation dataset
         train_dataset = TranscriptDataset(
             root_dir=os.path.join(os.getcwd(), 'data'),
-            len_read=len_read,
-            len_overlap=len_overlap,
-            len_kmer=len_kmer,
-            n_words=n_words,
-            tokenizer=tokenizer.get_tokenizer,
+            conf=dataset_conf,
             dataset_type='train'
         )
         val_dataset = TranscriptDataset(
             root_dir=os.path.join(os.getcwd(), 'data'),
-            len_read=len_read,
-            len_overlap=len_overlap,
-            len_kmer=len_kmer,
-            n_words=n_words,
-            tokenizer=tokenizer.get_tokenizer,
+            conf=dataset_conf,
             dataset_type='val'
         )
 
         # log information
         logger.info(f'Read len: {len_read}')
-        logger.info(f'Overlap len: {len_overlap}')
         logger.info(f'Kmers len: {len_kmer}')
         logger.info(f'Words inside a sentence: {n_words}')
         logger.info(f'Tokenizer used: {tokenizer_selected}')
@@ -185,9 +185,9 @@ def train_gene_classifier(
 
         # print dataset status
         logger.info('No. records train set')
-        logger.info(train_dataset.dataset_status)
+        logger.info(train_dataset.print_dataset_status())
         logger.info('No. records val set')
-        logger.info(val_dataset.dataset_status)
+        logger.info(val_dataset.print_dataset_status())
 
         # load train and validation dataloader
         train_loader: DataLoader = DataLoader(
@@ -206,13 +206,13 @@ def train_gene_classifier(
 
         # evaluate weights for criterion function
         y = []
-        for idx, label in enumerate(train_dataset.status):
+        for idx, label in enumerate(train_dataset.get_dataset_status()):
             y = np.append(y, [idx] * label)
         class_weights = class_weight.compute_class_weight('balanced', classes=np.unique(y), y=y)
         class_weights: torch.Tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
         # update hyperparameter
-        hyperparameter['vocab_size'] = tokenizer.get_tokenizer.vocab_size
+        hyperparameter['vocab_size'] = tokenizer.vocab_size
         hyperparameter['n_classes'] = train_dataset.classes()
 
         # define model
@@ -274,7 +274,7 @@ def train_gene_classifier(
     )
 
     # init tokenizer
-    tokenizer = None
+    tokenizer = Optional[MyDNATokenizer]
     if tokenizer_selected == 'dna_bert':
         tokenizer = DNABertTokenizer(
             root_dir=os.path.join(os.getcwd(), 'data'),
@@ -287,19 +287,23 @@ def train_gene_classifier(
             add_n=True
         )
 
+    # create dataset configuration
+    dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
+        len_read=len_read,
+        len_kmer=len_kmer,
+        n_words=n_words,
+        tokenizer=tokenizer
+    )
+
     # load test dataset
     test_dataset = TranscriptDataset(
         root_dir=os.path.join(os.getcwd(), 'data'),
-        len_read=len_read,
-        len_overlap=len_overlap,
-        len_kmer=len_kmer,
-        n_words=n_words,
-        tokenizer=tokenizer.get_tokenizer,
+        conf=dataset_conf,
         dataset_type='test'
     )
     # log test dataset status
     logger.info('No. records test set')
-    logger.info(test_dataset.dataset_status)
+    logger.info(test_dataset.print_dataset_status())
 
     # load model
     model: Model = torch.load(os.path.join(model_path, 'model.h5'))
@@ -327,7 +331,7 @@ def train_gene_classifier(
         y_pred,
         digits=3,
         zero_division=1,
-        target_names=test_dataset.labels.keys()
+        target_names=test_dataset.get_labels_dict().keys()
     )
     result.info(report)
 
@@ -340,7 +344,6 @@ def train_gene_classifier(
     save_result(
         result_csv_path=os.path.join(os.getcwd(), 'log', TASK, model_selected, 'results.csv'),
         len_read=len_read,
-        len_overlap=len_overlap,
         len_kmer=len_kmer,
         n_words=n_words,
         tokenizer_selected=tokenizer_selected,
@@ -357,12 +360,10 @@ if __name__ == '__main__':
     # general parameters
     parser.add_argument('-len_read', dest='len_read', action='store',
                         type=int, default=150, help='define length of reads')
-    parser.add_argument('-len_overlap', dest='len_overlap', action='store',
-                        type=int, default=0, help='define length of overlapping between reads')
     parser.add_argument('-len_kmer', dest='len_kmer', action='store',
                         type=int, default=6, help='define length of kmers')
     parser.add_argument('-n_words', dest='n_words', action='store',
-                        type=int, default=30, help='number of kmers inside a sentence')
+                        type=int, default=20, help='number of kmers inside a sentence')
     parser.add_argument('-tokenizer_selected', dest='tokenizer_selected', action='store',
                         type=str, default='dna_bert_n', help='select the tokenizer to be used')
     parser.add_argument('-batch_size', dest='batch_size', action='store',
@@ -391,7 +392,6 @@ if __name__ == '__main__':
     # execute main
     train_gene_classifier(
         len_read=args.len_read,
-        len_overlap=args.len_overlap,
         len_kmer=args.len_kmer,
         n_words=args.n_words,
         model_selected=args.model_selected,
