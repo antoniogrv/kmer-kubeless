@@ -134,5 +134,9 @@ class MyDataset(Dataset, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_dataset_status(self) -> str:
+    def get_dataset_status(self):
+        pass
+
+    @abstractmethod
+    def print_dataset_status(self) -> str:
         pass
