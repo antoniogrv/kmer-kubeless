@@ -8,7 +8,7 @@
 
 # generated datas
 /data/transcripts/
-/data/reads/
+/data/gt_shredder_*/
 /data/fusim_*/
 /data/art_*/
 /data/inputs_model/
