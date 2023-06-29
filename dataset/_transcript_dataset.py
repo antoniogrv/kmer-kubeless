@@ -123,39 +123,6 @@ class TranscriptDataset(MyDataset):
             __kmers_dataset.to_csv(__kmers_dataset_path, index=False)
             self.update_dataset(__kmers_dataset_path)
 
-        # =================== Generation sentences Step ================= #
-        __sentences_dataset_path: str = os.path.join(
-            self.processed_dir,
-            f'transcript_{self.conf["len_read"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'n_words_{self.conf["n_words"]}.csv'
-        )
-        # check if sentences dataset are already generated
-        generation_sentences_dataset_phase: bool = (generation_kmers_dataset_phase and
-                                                    self.check_dataset(__sentences_dataset_path))
-        if not generation_sentences_dataset_phase:
-            __kmers_dataset: pd.DataFrame = pd.read_csv(__kmers_dataset_path)
-            # split dataset on processes
-            rows_for_each_process: List[Tuple[int, int]] = split_dataset_on_processes(
-                __kmers_dataset,
-                os.cpu_count()
-            )
-            # init dataset
-            __sentences_dataset: pd.DataFrame = pd.DataFrame()
-            # call generate kmers from sequence on multi processes
-            with Pool(os.cpu_count()) as pool:
-                results = pool.imap(partial(
-                    generate_sentences_from_kmers,
-                    dataset=__kmers_dataset,
-                    n_words=self.conf['n_words']
-                ), rows_for_each_process)
-                # append all local dataset to global dataset
-                for local_dataset in results:
-                    __sentences_dataset = pd.concat([__sentences_dataset, local_dataset])
-            # save sentences dataset as csv
-            __sentences_dataset.to_csv(__sentences_dataset_path, index=False)
-            self.update_dataset(__sentences_dataset_path)
-
         # ============== Generation of train, val, test Step ============== #
         __train_dataset_path: str = os.path.join(
             self.processed_dir,
@@ -186,10 +153,10 @@ class TranscriptDataset(MyDataset):
         )
         if not generation_sets_phase_flag:
             # load kmers dataset
-            __sentences_dataset: pd.DataFrame = pd.read_csv(__sentences_dataset_path)
+            __kmers_dataset: pd.DataFrame = pd.read_csv(__kmers_dataset_path)
             # split dataset in train, val and test set
             __train_dataset, __test_dataset = train_test_split(
-                __sentences_dataset,
+                __kmers_dataset,
                 test_size=0.1
             )
             __train_dataset, __val_dataset = train_test_split(
@@ -207,10 +174,29 @@ class TranscriptDataset(MyDataset):
                 __val_dataset_path,
                 __test_dataset_path
             ]
-            # shuffles rows, saves datasets as csv, and updates hashes
+            # generate sentences for each list of kmers
             for i in range(3):
-                __datasets[i] = __datasets[i].sample(frac=1).reset_index(drop=True)
-                __datasets[i].to_csv(__dataset_paths[i], index=False)
+                __datasets[i].reset_index(drop=True, inplace=True)
+                # split dataset on processes
+                rows_for_each_process: List[Tuple[int, int]] = split_dataset_on_processes(
+                    __datasets[i],
+                    os.cpu_count()
+                )
+                # init dataset
+                __sentences_dataset: pd.DataFrame = pd.DataFrame()
+                # call generate kmers from sequence on multi processes
+                with Pool(os.cpu_count()) as pool:
+                    results = pool.imap(partial(
+                        generate_sentences_from_kmers,
+                        dataset=__datasets[i],
+                        n_words=self.conf['n_words']
+                    ), rows_for_each_process)
+                    # append all local dataset to global dataset
+                    for local_dataset in results:
+                        __sentences_dataset = pd.concat([__sentences_dataset, local_dataset])
+                # shuffles rows, saves datasets as csv, and updates hashes
+                __sentences_dataset = __sentences_dataset.sample(frac=1).reset_index(drop=True)
+                __sentences_dataset.to_csv(__dataset_paths[i], index=False)
                 self.update_dataset(__dataset_paths[i])
 
         # load dataset
