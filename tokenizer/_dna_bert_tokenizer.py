@@ -50,8 +50,6 @@ class DNABertTokenizer:
             mask_token=mask_token
         )
 
-        self.t = self.__tokenizer
-
     @property
     def tokenizer(self) -> MyDNATokenizer:
         return self.__tokenizer
