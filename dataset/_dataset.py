@@ -13,7 +13,6 @@ from torch.utils.data.dataset import Dataset
 
 
 class MyDataset(Dataset, metaclass=ABCMeta):
-    @abstractmethod
     def __init__(
             self,
             root_dir: str,
