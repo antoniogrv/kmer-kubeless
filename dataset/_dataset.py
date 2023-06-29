@@ -128,3 +128,11 @@ class MyDataset(Dataset, metaclass=ABCMeta):
     @property
     def dataset_type(self) -> str:
         return self.__dataset_type
+
+    @abstractmethod
+    def get_labels_dict(self) -> Dict[str, int]:
+        pass
+
+    @abstractmethod
+    def get_dataset_status(self) -> str:
+        pass
