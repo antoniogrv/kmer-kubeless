@@ -5,28 +5,28 @@ from typing import Tuple
 from typing import Dict
 from typing import List
 
+from multiprocessing.pool import Pool
+from functools import partial
+
 from tabulate import tabulate
 from tqdm import tqdm
 from glob import glob
 import pandas as pd
 import pickle
+import torch
 import os
-
-from multiprocessing.pool import Pool
-from functools import partial
 
 from sklearn.model_selection import train_test_split
 
-import torch
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.dataset import T_co
 
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from dataset._utils import split_dataset_on_processes
-from dataset._utils import split_reads_file_on_processes
-from dataset._utils import generate_sentences_from_kmers
-from dataset._utils import generate_kmers_from_sequences
+from dataset._concurrent import split_dataset_on_processes
+from dataset._concurrent import split_reads_file_on_processes
+from dataset._concurrent import generate_sentences_from_kmers
+from dataset._concurrent import generate_kmers_from_sequences
 
 
 class TranscriptDataset(Dataset):

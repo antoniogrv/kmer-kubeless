@@ -7,13 +7,12 @@ import os
 
 def create_test_name(
         len_read: int,
-        len_overlap: int,
         len_kmer: int,
         n_words: int,
         tokenizer_selected: str,
         hyperparameter: Dict[str, Any]
 ) -> str:
-    test_name: str = f'{len_read}_{len_overlap}_{len_kmer}_{n_words}_{tokenizer_selected}'
+    test_name: str = f'{len_read}_{len_kmer}_{n_words}_{tokenizer_selected}'
     for parameter in hyperparameter.keys():
         value = hyperparameter[parameter]
         if isinstance(value, float):
