@@ -6,7 +6,7 @@ import os
 from tokenizer import MyDNATokenizer
 
 
-class DNABertTokenizer:
+class DNABertTokenizer(MyDNATokenizer):
     def __init__(
             self,
             root_dir: str,
@@ -38,7 +38,7 @@ class DNABertTokenizer:
                 for vocab in vocabs:
                     vocab_file.write(f'{vocab}\n')
 
-        self.__tokenizer: MyDNATokenizer = MyDNATokenizer(
+        super().__init__(
             vocab_name=self.__vocab_name,
             vocab_file=self.__vocab_path,
             len_kmer=len_kmer,
@@ -50,6 +50,5 @@ class DNABertTokenizer:
             mask_token=mask_token
         )
 
-    @property
-    def tokenizer(self) -> MyDNATokenizer:
-        return self.__tokenizer
+    def save_vocabulary(self, save_directory):
+        raise NotImplementedError
