@@ -1,11 +1,38 @@
 from typing import List
 
 from tqdm import tqdm
+from glob import glob
 import pandas as pd
 import os
 
 from Bio import SeqIO
 from Bio import SeqRecord
+
+
+def gt_shredder(
+        transcript_dir: str,
+        output_dir: str,
+        len_read: int,
+) -> None:
+    # for each fastq files inside transcript dir
+    files_paths: List[str] = glob(os.path.join(transcript_dir, '*fastq'))
+    for file_path in tqdm(files_paths, total=len(files_paths), desc='Executing gt-shredder...'):
+        file_name: str = os.path.basename(file_path)
+        gene_name: str = file_name[:file_name.index('.fastq')]
+        reads_file_name: str = f'{gene_name}.reads'
+        reads_file_path: str = os.path.join(output_dir, reads_file_name)
+        # init command
+        command: str = f'gt shredder ' \
+                       f'-minlength {len_read} ' \
+                       f'-maxlength {len_read} ' \
+                       f'-overlap 0 ' \
+                       f'-clipdesc no ' \
+                       f'{file_path} > {reads_file_path}'
+        # execute gt-shredder
+        os.system(command)
+        # remove generated files
+        for file_ext in ['.sds', '.ois', '.md5', '.esq', '.des', '.ssp']:
+            os.system(f'rm {file_path}{file_ext}')
 
 
 def fusion_simulator(
