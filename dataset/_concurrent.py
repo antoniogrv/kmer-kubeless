@@ -3,10 +3,14 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 
+from tqdm import tqdm
 import pandas as pd
+import torch
 import os
 
 from Bio import SeqIO
+
+from transformers.tokenization_utils import PreTrainedTokenizer
 
 
 def split_reads_file_on_processes(
@@ -68,7 +72,7 @@ def generate_kmers_from_sequences(
     # init dataset
     dataset: pd.DataFrame = pd.DataFrame()
     # for each read file
-    for reads_file in reads_files:
+    for reads_file in tqdm(reads_files, total=len(reads_files), desc='Generating kmers...'):
         # open file with SeqIO
         fasta_file = SeqIO.parse(open(
             os.path.join(dir_path, f'{reads_file}_{len_read}_{len_overlap}.reads')
@@ -106,7 +110,7 @@ def generate_sentences_from_kmers(
     sentences_dataset: pd.DataFrame = pd.DataFrame()
     # get start and end indexes
     start, end = rows_index
-    for index in range(start, end):
+    for index in tqdm(range(start, end), total=(end - start), desc='Generating sentences...'):
         # get row of dataset with index
         row: pd.DataFrame = dataset.iloc[[index]]
         # drop NaN values
@@ -141,7 +145,7 @@ def generate_kmers_from_dataset(
     kmers_dataset: pd.DataFrame = pd.DataFrame()
     # get start and end indexes
     start, end = rows_index
-    for index in range(start, end):
+    for index in tqdm(range(start, end), total=(end - start), desc='Generating kmers...'):
         # get row of dataset with index
         row: pd.DataFrame = dataset.iloc[[index]]
         # get read and number of kmers
@@ -167,3 +171,56 @@ def generate_kmers_from_dataset(
         kmers_dataset = pd.concat([kmers_dataset, row_dataset])
 
     return kmers_dataset
+
+
+def generate_sentences_encoded_from_dataset(
+        rows_index: Tuple[int, int],
+        dataset: pd.DataFrame,
+        n_words: int,
+        n_sentences: int,
+        tokenizer: PreTrainedTokenizer
+) -> List[List[Dict[str, torch.Tensor]]]:
+    # init inputs
+    inputs: List[List[Dict[str, torch.Tensor]]] = []
+    # get start and end indexes
+    start, end = rows_index
+    for index in tqdm(range(start, end), total=(end - start), desc='Generating sentences encoded...'):
+        # get row of dataset with index
+        row: pd.DataFrame = dataset.iloc[[index]]
+        # get all kmers in this row
+        kmers: List[str] = row.values[0]
+        # get all sentences of n_words
+        sentences: List[str] = [' '.join(kmers[i:i + n_words]) for i in range(n_sentences)]
+        # tokenize all sentences
+        sentences_tokenized: List[Dict[str, List[int]]] = [
+            tokenizer.encode_plus(
+                sentence,
+                padding='max-length',
+                add_special_tokens=True,
+                truncation=True,
+                max_length=n_words + 2
+            ) for sentence in sentences
+        ]
+        # extract tensor from sentences tokenized
+        read_inputs: List[Dict[str, torch.Tensor]] = []
+        for sentence_tokenized in sentences_tokenized:
+            input_ids: List[int] = sentence_tokenized['input_ids']
+            token_type_ids: List[int] = sentence_tokenized['token_type_ids']
+            attention_mask: List[int] = sentence_tokenized['attention_mask']
+            # zero-pad up to the sequence length.
+            padding_length: int = n_words + 2 - len(input_ids)
+            input_ids: List[int] = input_ids + ([0] * padding_length)
+            attention_mask: List[int] = attention_mask + ([1] * padding_length)
+            token_type_ids: List[int] = token_type_ids + ([0] * padding_length)
+            # append read_input
+            read_inputs.append(
+                {
+                    'input_ids': torch.tensor(input_ids, dtype=torch.long),
+                    'attention_mask': torch.tensor(attention_mask, dtype=torch.int),
+                    'token_type_ids': torch.tensor(token_type_ids, dtype=torch.int),
+                }
+            )
+        # append read_inputs to inputs
+        inputs.append(read_inputs)
+
+    return inputs
