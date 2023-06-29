@@ -111,6 +111,28 @@ def train_gene_classifier(
     torch.manual_seed(42)
     np.random.seed(42)
 
+    # init tokenizer
+    tokenizer = Optional[MyDNATokenizer]
+    if tokenizer_selected == 'dna_bert':
+        tokenizer = DNABertTokenizer(
+            root_dir=os.path.join(os.getcwd(), 'data'),
+            len_kmer=len_kmer
+        )
+    elif tokenizer_selected == 'dna_bert_n':
+        tokenizer = DNABertTokenizer(
+            root_dir=os.path.join(os.getcwd(), 'data'),
+            len_kmer=len_kmer,
+            add_n=True
+        )
+
+    # create dataset configuration
+    dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
+        len_read=len_read,
+        len_kmer=len_kmer,
+        n_words=n_words,
+        tokenizer=tokenizer
+    )
+
     # check if this configuration is already tested
     if not test_check(task=TASK, model_name=model_selected, parent_name=test_name):
         print(f'Initialization of the test...')
@@ -129,27 +151,6 @@ def train_gene_classifier(
         train_logger: logging.Logger = setup_logger(
             'train',
             os.path.join(log_path, 'train.log')
-        )
-        # init tokenizer
-        tokenizer = Optional[MyDNATokenizer]
-        if tokenizer_selected == 'dna_bert':
-            tokenizer = DNABertTokenizer(
-                root_dir=os.path.join(os.getcwd(), 'data'),
-                len_kmer=len_kmer
-            )
-        elif tokenizer_selected == 'dna_bert_n':
-            tokenizer = DNABertTokenizer(
-                root_dir=os.path.join(os.getcwd(), 'data'),
-                len_kmer=len_kmer,
-                add_n=True
-            )
-
-        # create dataset configuration
-        dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
-            len_read=len_read,
-            len_kmer=len_kmer,
-            n_words=n_words,
-            tokenizer=tokenizer
         )
 
         # load train and validation dataset
@@ -271,28 +272,6 @@ def train_gene_classifier(
     result: logging.Logger = setup_logger(
         'result',
         os.path.join(log_path, 'result.log')
-    )
-
-    # init tokenizer
-    tokenizer = Optional[MyDNATokenizer]
-    if tokenizer_selected == 'dna_bert':
-        tokenizer = DNABertTokenizer(
-            root_dir=os.path.join(os.getcwd(), 'data'),
-            len_kmer=len_kmer
-        )
-    elif tokenizer_selected == 'dna_bert_n':
-        tokenizer = DNABertTokenizer(
-            root_dir=os.path.join(os.getcwd(), 'data'),
-            len_kmer=len_kmer,
-            add_n=True
-        )
-
-    # create dataset configuration
-    dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
-        len_read=len_read,
-        len_kmer=len_kmer,
-        n_words=n_words,
-        tokenizer=tokenizer
     )
 
     # load test dataset
