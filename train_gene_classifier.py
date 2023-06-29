@@ -372,7 +372,11 @@ if __name__ == '__main__':
     # gene classifier parameters
     define_input_args_model_hyperparameters(arg_parser=parser)
 
-    # grid search parameter
+    # train parameters
+    parser.add_argument('-re_train', dest='re_train', action='store', type=str2bool,
+                        default=False, help='set true if you wish to retrain the model despite having already '
+                                            'tested with these hyperparameters. Obviously, if the model has been '
+                                            'trained on a different dataset you need to set this parameter to true')
     parser.add_argument('-grid_search', dest='grid_search', action='store', type=str2bool,
                         default=False, help='set true if this script is launching from grid_search script')
 
