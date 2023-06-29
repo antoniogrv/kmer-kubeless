@@ -234,24 +234,18 @@ def encode_sentences(
     inputs: List[Dict[str, torch.Tensor]] = []
     # get start and end indexes
     start, end = rows_index
-    # get sentences for this process
-    sentences: List[List[str]] = dataset.iloc[start:end, :1].values
     # tokenizing sequences
-    sentences_tokenized: List[Dict[str, List[int]]] = []
-    for sentence in tqdm(sentences, total=len(sentences), desc='Tokenization of sentences...'):
-        sentences_tokenized.append(
-            tokenizer.encode_plus(
-                sentence[0],
-                padding='max-length',
-                add_special_tokens=True,
-                truncation=True,
-                max_length=n_words + 2
-            )
+    for index in tqdm(range(start, end), total=(end - start), desc='Tokenization of sentences...'):
+        # extract sentence by index of row
+        row: pd.DataFrame = dataset.iloc[[index]]
+        sentence: str = row.values[0][0]
+        sentence_tokenized = tokenizer.encode_plus(
+            sentence,
+            padding='max-length',
+            add_special_tokens=True,
+            truncation=True,
+            max_length=n_words + 2
         )
-    # extract tensor from sentences tokenized
-    for sentence_tokenized in tqdm(sentences_tokenized,
-                                   total=len(sentences_tokenized),
-                                   desc='Creation of the tensors from the tokenized sentences...'):
         input_ids: List[int] = sentence_tokenized['input_ids']
         token_type_ids: List[int] = sentence_tokenized['token_type_ids']
         attention_mask: List[int] = sentence_tokenized['attention_mask']
@@ -260,12 +254,13 @@ def encode_sentences(
         input_ids: List[int] = input_ids + ([0] * padding_length)
         attention_mask: List[int] = attention_mask + ([1] * padding_length)
         token_type_ids: List[int] = token_type_ids + ([0] * padding_length)
-        # append read_input
+        # append sentence input to local inputs
         inputs.append(
             {
                 'input_ids': torch.tensor(input_ids, dtype=torch.long),
                 'attention_mask': torch.tensor(attention_mask, dtype=torch.int),
                 'token_type_ids': torch.tensor(token_type_ids, dtype=torch.int),
+                'label': torch.tensor([row.values[0][1]], dtype=torch.long)
             }
         )
 
