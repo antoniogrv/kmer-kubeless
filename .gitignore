@@ -9,7 +9,7 @@
 # generated datas
 /data/transcripts/
 /data/reads/
-/data/fusim/
+/data/fusim_*/
 /data/art_*/
 /data/inputs_model/
 /data/check/
