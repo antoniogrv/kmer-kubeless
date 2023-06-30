@@ -95,6 +95,7 @@ def train_gene_classifier(
         tokenizer_selected: str,
         batch_size: int,
         hyperparameter: Dict[str, any],
+        re_train: bool,
         grid_search: bool
 ):
     # generate test name
@@ -134,7 +135,7 @@ def train_gene_classifier(
     )
 
     # check if this configuration is already tested
-    if not test_check(task=TASK, model_name=model_selected, parent_name=test_name):
+    if re_train or not test_check(task=TASK, model_name=model_selected, parent_name=test_name):
         print(f'Initialization of the test...')
         # create folders and get path
         log_path, model_path = create_folders(
@@ -381,5 +382,6 @@ if __name__ == '__main__':
         tokenizer_selected=args.tokenizer_selected,
         batch_size=args.batch_size,
         hyperparameter=config,
+        re_train=args.re_train,
         grid_search=args.grid_search
     )
