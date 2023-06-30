@@ -177,9 +177,9 @@ def generate_sentences_encoded_from_dataset(
         n_words: int,
         n_sentences: int,
         tokenizer: PreTrainedTokenizer
-) -> List[List[Dict[str, torch.Tensor]]]:
+) -> List[Dict[str, Union[List[Dict[str, torch.Tensor]], torch.Tensor]]]:
     # init inputs
-    inputs: List[List[Dict[str, torch.Tensor]]] = []
+    inputs: List[Dict[str, Union[List[Dict[str, torch.Tensor]], torch.Tensor]]] = []
     # get start and end indexes
     start, end = rows_index
     for index in tqdm(range(start, end), total=(end - start), desc='Generating sentences encoded...'):
@@ -219,7 +219,10 @@ def generate_sentences_encoded_from_dataset(
                 }
             )
         # append read_inputs to inputs
-        inputs.append(read_inputs)
+        inputs.append({
+            'read_inputs': read_inputs,
+            'label': torch.tensor([row.values[0][1]], dtype=torch.long)
+        })
 
     return inputs
 
