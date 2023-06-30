@@ -1,3 +1,3 @@
-from model.model import Model
+from model._model import Model
 
-from model.dna_bert import DNABert
+from model._dna_bert import DNABert

@@ -46,7 +46,7 @@ class Model(nn.Module, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def step(self, inputs: Dict[str, torch.Tensor]):
+    def step(self, inputs: Dict[str, any]):
         pass
 
     @abstractmethod
