@@ -175,6 +175,7 @@ def generate_sentences_encoded_from_dataset(
         rows_index: Tuple[int, int],
         dataset: pd.DataFrame,
         n_words: int,
+        n_kmers: int,
         n_sentences: int,
         tokenizer: PreTrainedTokenizer
 ) -> List[Dict[str, Union[List[Dict[str, torch.Tensor]], torch.Tensor]]]:
@@ -186,7 +187,7 @@ def generate_sentences_encoded_from_dataset(
         # get row of dataset with index
         row: pd.DataFrame = dataset.iloc[[index]]
         # get all kmers in this row
-        kmers: List[str] = row.values[0]
+        kmers: List[str] = row.values[0][:n_kmers]
         # get all sentences of n_words
         sentences: List[str] = [' '.join(kmers[i:i + n_words]) for i in range(n_sentences)]
         # tokenize all sentences
@@ -221,7 +222,7 @@ def generate_sentences_encoded_from_dataset(
         # append read_inputs to inputs
         inputs.append({
             'read_inputs': read_inputs,
-            'label': torch.tensor([row.values[0][1]], dtype=torch.long)
+            'label': torch.tensor([row.values[0][-1]], dtype=torch.long)
         })
 
     return inputs
