@@ -1,3 +1,4 @@
+from typing import Optional
 from typing import Union
 from typing import Tuple
 from typing import List
@@ -201,7 +202,9 @@ def generate_sentences_encoded_from_dataset(
             ) for sentence in sentences
         ]
         # extract tensor from sentences tokenized
-        read_inputs: List[Dict[str, torch.Tensor]] = []
+        matrix_input_ids: List[torch.Tensor] = []
+        matrix_attention_mask: List[torch.Tensor] = []
+        matrix_token_type_ids: List[torch.Tensor] = []
         for sentence_tokenized in sentences_tokenized:
             input_ids: List[int] = sentence_tokenized['input_ids']
             token_type_ids: List[int] = sentence_tokenized['token_type_ids']
@@ -212,16 +215,15 @@ def generate_sentences_encoded_from_dataset(
             attention_mask: List[int] = attention_mask + ([1] * padding_length)
             token_type_ids: List[int] = token_type_ids + ([0] * padding_length)
             # append read_input
-            read_inputs.append(
-                {
-                    'input_ids': torch.tensor(input_ids, dtype=torch.long),
-                    'attention_mask': torch.tensor(attention_mask, dtype=torch.int),
-                    'token_type_ids': torch.tensor(token_type_ids, dtype=torch.int),
-                }
-            )
+            matrix_input_ids.append(torch.tensor(input_ids, dtype=torch.long))
+            matrix_attention_mask.append(torch.tensor(attention_mask, dtype=torch.int))
+            matrix_token_type_ids.append(torch.tensor(token_type_ids, dtype=torch.int))
+
         # append read_inputs to inputs
         inputs.append({
-            'read_inputs': read_inputs,
+            'matrix_input_ids': torch.stack(matrix_input_ids),
+            'matrix_attention_mask': torch.stack(matrix_attention_mask),
+            'matrix_token_type_ids': torch.stack(matrix_token_type_ids),
             'label': torch.tensor([row.values[0][-1]], dtype=torch.long)
         })
 
