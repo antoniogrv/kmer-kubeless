@@ -33,7 +33,7 @@ from utils import close_loggers
 TASK: Final = 'gene_classification'
 
 
-def define_input_args_model_hyperparameters(
+def define_input_args_gene_classifier_hyperparameters(
         arg_parser: argparse.ArgumentParser,
         suffix: str = ''
 ) -> None:
@@ -54,6 +54,11 @@ def define_input_args_model_hyperparameters(
     arg_parser.add_argument(f'-{suffix}dropout', dest=f'{suffix}dropout', action='store',
                             type=float, default=0.5, help='define value of dropout probability')
 
+    arg_parser.add_argument(f'-{suffix}re_train', dest=f'{suffix}re_train', action='store', type=str2bool,
+                            default=False, help='set true if you wish to retrain the model despite having already '
+                                                'tested with these hyperparameters. Obviously, if the model has been '
+                                                'trained on a different dataset you need to set this parameter to true')
+
 
 def check_gene_classifier_hyperparameters(
         args_dict: Dict[str, str],
@@ -72,7 +77,7 @@ def check_gene_classifier_hyperparameters(
         raise ValueError('select one of these recurrent layers: ["lstm", "gru"]')
 
 
-def init_hyperparameters_dict(
+def init_hyperparameters_gene_classifier_dict(
         args_dict: Dict[str, str],
         suffix: str = ''
 ) -> Dict[str, any]:
@@ -98,16 +103,6 @@ def train_gene_classifier(
         re_train: bool,
         grid_search: bool
 ):
-    # generate test name
-    test_name: str = create_test_name(
-        len_read=len_read,
-        len_kmer=len_kmer,
-        n_words=n_words,
-        tokenizer_selected=tokenizer_selected,
-        hyperparameter=hyperparameter
-    )
-    print(f'Test name: {test_name}')
-
     # set seed for reproducibility
     torch.manual_seed(42)
     np.random.seed(42)
@@ -125,6 +120,16 @@ def train_gene_classifier(
             len_kmer=len_kmer,
             add_n=True
         )
+
+    # generate test name
+    test_name: str = create_test_name(
+        len_read=len_read,
+        len_kmer=len_kmer,
+        n_words=n_words,
+        tokenizer_selected=tokenizer,
+        hyperparameter=hyperparameter
+    )
+    print(f'Test name: {test_name}')
 
     # create dataset configuration
     dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
@@ -350,13 +355,9 @@ if __name__ == '__main__':
                         type=int, default=512, help='define batch size')
 
     # gene classifier parameters
-    define_input_args_model_hyperparameters(arg_parser=parser)
+    define_input_args_gene_classifier_hyperparameters(arg_parser=parser)
 
     # train parameters
-    parser.add_argument('-re_train', dest='re_train', action='store', type=str2bool,
-                        default=False, help='set true if you wish to retrain the model despite having already '
-                                            'tested with these hyperparameters. Obviously, if the model has been '
-                                            'trained on a different dataset you need to set this parameter to true')
     parser.add_argument('-grid_search', dest='grid_search', action='store', type=str2bool,
                         default=False, help='set true if this script is launching from grid_search script')
 
@@ -369,7 +370,7 @@ if __name__ == '__main__':
     )
 
     # init hyperparameters config
-    config: Dict[str, any] = init_hyperparameters_dict(
+    config: Dict[str, any] = init_hyperparameters_gene_classifier_dict(
         args_dict=vars(args)
     )
 
