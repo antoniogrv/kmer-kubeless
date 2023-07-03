@@ -76,20 +76,21 @@ if __name__ == '__main__':
     # init gene dictionary
     gene_dict: Dict[str, List[str]] = {}
     # init paths
-    load_dotenv(dotenv_path=os.path.join(os.getcwd(), 'data', '.env'))
+    load_dotenv(dotenv_path=os.path.join(os.getcwd(), '.env'))
     genes_panel_path: str = os.path.join(
         os.getcwd(),
-        os.getenv('LOCAL_GENES_PANEL_PATH')
+        os.getenv('GENES_PANEL_LOCAL_PATH')
     )
     transcript_dir_path: str = os.path.join(
         os.getcwd(),
-        os.getenv('LOCAL_TRANSCRIPT_DIR')
+        os.getenv('TRANSCRIPT_LOCAL_DIR')
     )
 
     # check if transcripts dir exists
     if not os.path.exists(transcript_dir_path):
         os.makedirs(transcript_dir_path)
 
+    # for each gene in genes_panel_file
     with open(genes_panel_path, 'r') as genes_panel_file:
         for gene in tqdm(genes_panel_file, desc='Downloading the transcripts of the genes...'):
             # remove new line character
