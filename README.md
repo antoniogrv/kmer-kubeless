@@ -62,10 +62,13 @@ pip3 install torch torchvision torchaudio \
 Finally, it is necessary to install the following libraries.
 
 ```shell
-conda install -c conda-forge biopython
 pip install tabulate
 pip install checksumdir
 pip install python-dotenv
+conda install -c conda-forge biopython
+conda install -c conda-forge scikit-plot
+conda install -c conda-forge matplotlib
+
 apt install genometools
 apt install art-nextgen-simulation-tools
 ```
