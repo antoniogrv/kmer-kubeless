@@ -1,5 +1,6 @@
 from typing import Hashable
 
+import dotenv
 from pandas import Series
 from typing import Union
 from typing import Tuple
@@ -13,7 +14,6 @@ from tabulate import tabulate
 import pandas as pd
 import numpy as np
 import pickle
-import dotenv
 import torch
 import os
 
@@ -256,7 +256,7 @@ class FusionDataset(MyDataset):
         generation_inputs_phase: bool = generation_sets_phase_flag and self.check_file(self.__inputs_path)
         if not generation_inputs_phase:
             # get number of processes
-            n_proc: int = 1
+            n_proc: int = 5
             # get number of kmers and number of sentences
             __n_kmers: int = self.conf['len_read'] - self.conf['len_kmer'] + 1
             __n_sentences: int = __n_kmers - self.conf['n_words'] + 1
@@ -283,7 +283,7 @@ class FusionDataset(MyDataset):
                 with Pool(n_proc) as pool:
                     results = pool.imap(partial(
                         generate_sentences_encoded_from_dataset,
-                        dataset=self.__dataset.iloc[:, :__n_kmers],
+                        dataset=self.__dataset,
                         n_words=self.conf['n_words'],
                         n_kmers=__n_kmers,
                         n_sentences=__n_sentences,
