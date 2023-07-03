@@ -1,5 +1,9 @@
+from typing import Final
 from typing import List
+
 import logging
+
+SEPARATOR: Final = '\n------------------------------------\n'
 
 
 def setup_logger(
