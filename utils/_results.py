@@ -27,8 +27,8 @@ def save_result(
         n_words: int,
         tokenizer_selected: str,
         hyperparameter: Dict[str, Any],
-        y_true: List[int],
-        y_pred: List[int]
+        y_true: np.ndarray,
+        y_pred: np.ndarray
 ):
     # init columns of result df
     columns = ['len_read', 'len_kmer', 'n_words', 'tokenizer_selected']
@@ -109,25 +109,24 @@ def plot_confusion_matrix(
 
 
 def plot_roc_curve(
-        y_true: List[int],
-        y_pred: List[int],
+        y_true: np.ndarray,
+        y_probs: np.ndarray,
         target_names: List[str],
         roc_curves_path: str
 ):
-    # binarize vector of true and pred
-    y_true_binary = label_binarize(np.array(y_true), classes=list(range(len(target_names))))
-    y_pred_binary = label_binarize(np.array(y_pred), classes=list(range(len(target_names))))
+    # binarize vector of true
+    y_true_binary = label_binarize(y_true, classes=list(range(len(target_names))))
 
     # evaluate ROC and auc for each class
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
     for i in range(len(target_names)):
-        fpr[i], tpr[i], _ = roc_curve(y_true_binary[:, i], y_pred_binary[:, i])
+        fpr[i], tpr[i], _ = roc_curve(y_true_binary[:, i], y_probs[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
 
     # evaluate micro-averaged ROC curve
-    fpr["micro"], tpr["micro"], _ = roc_curve(y_true_binary.ravel(), y_pred_binary.ravel())
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_true_binary.ravel(), y_probs.ravel())
     roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
     # plots roc curves
@@ -146,12 +145,14 @@ def plot_roc_curve(
 
 
 def log_results(
-        y_true: List[int],
-        y_pred: List[int],
+        y_true: np.ndarray,
+        y_probs: np.ndarray,
         target_names: List[str],
         logger: logging.Logger,
         test_dir: str
-) -> None:
+) -> np.ndarray:
+    # evaluate y_pred
+    y_pred: np.ndarray = np.argmax(y_probs, axis=1)
     # get accuracy and balanced accuracy
     accuracy = accuracy_score(y_true, y_pred)
     balanced_accuracy = balanced_accuracy_score(y_true, y_pred)
@@ -189,7 +190,9 @@ def log_results(
     # plot roc curves
     plot_roc_curve(
         y_true=y_true,
-        y_pred=y_pred,
+        y_probs=y_probs,
         target_names=target_names,
         roc_curves_path=os.path.join(test_dir, 'roc_curves.svg')
     )
+
+    return y_pred
