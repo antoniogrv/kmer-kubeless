@@ -31,9 +31,6 @@ class MyDNATokenizer(PreTrainedTokenizer):
             do_basic_tokenize=True
     """
 
-    def save_vocabulary(self, save_directory):
-        raise NotImplementedError
-
     def __init__(
             self,
             vocab_name,
@@ -195,6 +192,9 @@ class MyDNATokenizer(PreTrainedTokenizer):
                 num_pieces = int(len(token_ids_0) // 510) + 1
                 return (len(cls + token_ids_0 + sep) + 2 * (num_pieces - 1)) * [0]
         return len(cls + token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
+
+    def save_vocabulary(self, save_directory):
+        raise NotImplementedError
 
     def __str__(self):
         return self.__vocab_name
