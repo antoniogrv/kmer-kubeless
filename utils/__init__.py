@@ -10,4 +10,5 @@ from utils._logger import SEPARATOR
 from utils._logger import setup_logger
 from utils._logger import close_loggers
 
+from utils._results import log_results
 from utils._results import save_result
