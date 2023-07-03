@@ -2,8 +2,7 @@ from typing import Optional
 from typing import Final
 from typing import Dict
 
-import numpy as np
-import argparse
+from dotenv import load_dotenv
 import logging
 import torch
 import os
@@ -14,188 +13,123 @@ from tokenizer import DNABertTokenizer
 from dataset import TranscriptDataset
 from torch.utils.data import DataLoader
 
-from model import Model
+from model import MyModel
 from model import DNABert
 
 from torch.optim import AdamW
-from sklearn.utils import class_weight
 from sklearn.metrics import classification_report
 
 from utils import SEPARATOR
-from utils import str2bool
-from utils import create_test_name
-from utils import test_check
-from utils import create_folders
+from utils import define_gene_classifier_inputs
+from utils import create_test_id
+from utils import init_test
 from utils import setup_logger
-from utils import save_result
+from utils import evaluate_weights
 from utils import close_loggers
-
-TASK: Final = 'gene_classification'
-
-
-def define_input_args_gene_classifier_hyperparameters(
-        arg_parser: argparse.ArgumentParser,
-        suffix: str = ''
-) -> None:
-    arg_parser.add_argument(f'-{suffix}model_selected', dest=f'{suffix}model_selected', action='store',
-                            type=str, default='dna_bert', help='select the model to be used')
-    arg_parser.add_argument(f'-{suffix}hidden_size', dest=f'{suffix}hidden_size', action='store',
-                            type=int, default=1024, help='define number of hidden channels')
-    arg_parser.add_argument(f'-{suffix}n_hidden_layers', dest=f'{suffix}n_hidden_layers', action='store',
-                            type=int, default=7, help='define number of hidden layers')
-    arg_parser.add_argument(f'-{suffix}rnn', dest=f'{suffix}rnn', action='store',
-                            type=str, default='lstm', help='define type of recurrent layer')
-    arg_parser.add_argument(f'-{suffix}n_rnn_layers', dest=f'{suffix}n_rnn_layers', action='store',
-                            type=int, default=1, help='define number of recurrent layers')
-    arg_parser.add_argument(f'-{suffix}n_attention_heads', dest=f'{suffix}n_attention_heads', action='store',
-                            type=int, default=4, help='define number of attention heads')
-    arg_parser.add_argument(f'-{suffix}n_beams', dest=f'{suffix}n_beams', action='store',
-                            type=int, default=1, help='define number of beams')
-    arg_parser.add_argument(f'-{suffix}dropout', dest=f'{suffix}dropout', action='store',
-                            type=float, default=0.5, help='define value of dropout probability')
-
-    arg_parser.add_argument(f'-{suffix}re_train', dest=f'{suffix}re_train', action='store', type=str2bool,
-                            default=False, help='set true if you wish to retrain the model despite having already '
-                                                'tested with these hyperparameters. Obviously, if the model has been '
-                                                'trained on a different dataset you need to set this parameter to true')
-
-
-def check_gene_classifier_hyperparameters(
-        args_dict: Dict[str, str],
-        suffix: str = ''
-) -> None:
-    # check model selected
-    if args_dict[f'{suffix}model_selected'] not in ['dna_bert']:
-        raise ValueError('select one of these models: ["dna_bert"]')
-
-    # check tokenizer selected
-    if args_dict['tokenizer_selected'] not in ['dna_bert', 'dna_bert_n']:
-        raise ValueError('select one of these tokenizers: ["dna_bert", "dna_bert_n"]')
-
-    # check recurrent layer selected
-    if args_dict[f'{suffix}rnn'] not in ['lstm', 'gru']:
-        raise ValueError('select one of these recurrent layers: ["lstm", "gru"]')
-
-
-def init_hyperparameters_gene_classifier_dict(
-        args_dict: Dict[str, str],
-        suffix: str = ''
-) -> Dict[str, any]:
-    return {
-        'hidden_size': args_dict[f'{suffix}hidden_size'],
-        'dropout': args_dict[f'{suffix}dropout'],
-        'n_attention_heads': args_dict[f'{suffix}n_attention_heads'],
-        'n_beams': args_dict[f'{suffix}n_beams'],
-        'n_hidden_layers': args_dict[f'{suffix}n_hidden_layers'],
-        'rnn': args_dict[f'{suffix}rnn'],
-        'n_rnn_layers': args_dict[f'{suffix}n_rnn_layers']
-    }
+from utils import save_result
 
 
 def train_gene_classifier(
         len_read: int,
         len_kmer: int,
         n_words: int,
-        model_selected: str,
         tokenizer_selected: str,
+        model_selected: str,
+        hyperparameters: Dict[str, any],
         batch_size: int,
-        hyperparameter: Dict[str, any],
         re_train: bool,
-        grid_search: bool
-):
-    # set seed for reproducibility
-    torch.manual_seed(42)
-    np.random.seed(42)
-
+        grid_search: bool,
+) -> str:
+    # get value from .env
+    root_dir: Final = os.getenv('ROOT_LOCAL_DIR')
     # init tokenizer
     tokenizer = Optional[MyDNATokenizer]
     if tokenizer_selected == 'dna_bert':
         tokenizer = DNABertTokenizer(
-            root_dir=os.path.join(os.getcwd(), 'data'),
-            len_kmer=len_kmer
+            root_dir=root_dir,
+            len_kmer=len_kmer,
+            add_n=False
         )
     elif tokenizer_selected == 'dna_bert_n':
         tokenizer = DNABertTokenizer(
-            root_dir=os.path.join(os.getcwd(), 'data'),
+            root_dir=root_dir,
             len_kmer=len_kmer,
             add_n=True
         )
-
-    # generate test name
-    test_name: str = create_test_name(
+    # generate test id
+    test_id: str = create_test_id(
         len_read=len_read,
         len_kmer=len_kmer,
         n_words=n_words,
-        tokenizer_selected=tokenizer,
-        hyperparameter=hyperparameter
+        tokenizer=tokenizer,
+        hyperparameters=hyperparameters
     )
-    print(f'Test name: {test_name}')
-
     # create dataset configuration
     dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
+        genes_panel_path=os.path.join(os.getcwd(), os.getenv('GENES_PANEL_LOCAL_PATH')),
+        transcript_dir=os.path.join(os.getcwd(), os.getenv('TRANSCRIPT_LOCAL_DIR')),
         len_read=len_read,
         len_kmer=len_kmer,
         n_words=n_words,
         tokenizer=tokenizer
     )
+    # get global variables
+    task: str = os.getenv('GENE_CLASSIFIER_TASK')
+    result_dir: str = os.path.join(os.getcwd(), os.getenv('RESULTS_LOCAL_DIR'))
+    model_name: str = os.getenv('MODEL_NAME')
+    # init test
+    test_dir, log_dir, model_dir, model_path = init_test(
+        result_dir=result_dir,
+        task=task,
+        model_selected=model_selected,
+        test_id=test_id,
+        model_name=model_name,
+        re_train=re_train
+    )
 
-    # check if this configuration is already tested
-    if re_train or not test_check(task=TASK, model_name=model_selected, parent_name=test_name):
-        print(f'Initialization of the test...')
-        # create folders and get path
-        log_path, model_path = create_folders(
-            task=TASK,
-            model_name=model_selected,
-            parent_name=test_name
-        )
-
+    # if the model has not yet been trained
+    if not os.path.exists(model_path):
         # init loggers
         logger: logging.Logger = setup_logger(
             'logger',
-            os.path.join(log_path, 'logger.log')
+            os.path.join(log_dir, 'logger.log')
         )
         train_logger: logging.Logger = setup_logger(
             'train',
-            os.path.join(log_path, 'train.log')
+            os.path.join(log_dir, 'train.log')
         )
-
         # load train and validation dataset
         train_dataset = TranscriptDataset(
-            root_dir=os.path.join(os.getcwd(), 'data'),
+            root_dir=root_dir,
             conf=dataset_conf,
             dataset_type='train'
         )
         val_dataset = TranscriptDataset(
-            root_dir=os.path.join(os.getcwd(), 'data'),
+            root_dir=root_dir,
             conf=dataset_conf,
             dataset_type='val'
         )
-
         # log information
         logger.info(f'Read len: {len_read}')
         logger.info(f'Kmers len: {len_kmer}')
         logger.info(f'Words inside a sentence: {n_words}')
         logger.info(f'Tokenizer used: {tokenizer_selected}')
         logger.info(SEPARATOR)
-
         logger.info(f'Number of train sentences: {len(train_dataset)}')
         logger.info(f'Number of val sentences: {len(val_dataset)}')
         logger.info(f'Number of class: {train_dataset.classes()}')
         logger.info(f'Batch size: {batch_size}')
         logger.info(SEPARATOR)
-
         logger.info(f'Number of train sentences: {len(train_dataset)}')
         logger.info(f'Number of val sentences: {len(val_dataset)}')
         logger.info(f'Number of class: {train_dataset.classes()}')
         logger.info(f'Batch size: {batch_size}')
         logger.info(SEPARATOR)
-
         # print dataset status
         logger.info('No. records train set')
         logger.info(train_dataset.print_dataset_status())
         logger.info('No. records val set')
         logger.info(val_dataset.print_dataset_status())
-
         # load train and validation dataloader
         train_loader: DataLoader = DataLoader(
             train_dataset,
@@ -207,32 +141,23 @@ def train_gene_classifier(
             batch_size=batch_size,
             shuffle=True
         )
-
         # set device gpu if cuda is available
         device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        # evaluate weights for criterion function
-        y = []
-        for idx, label in enumerate(train_dataset.get_dataset_status()):
-            y = np.append(y, [idx] * label)
-        class_weights = class_weight.compute_class_weight('balanced', classes=np.unique(y), y=y)
-        class_weights: torch.Tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
-
+        # evaluating weights for criterion function
+        class_weights: torch.Tensor = evaluate_weights(train_dataset).to(device)
         # update hyperparameter
-        hyperparameter['vocab_size'] = tokenizer.vocab_size
-        hyperparameter['n_classes'] = train_dataset.classes()
-
+        hyperparameters['vocab_size'] = tokenizer.vocab_size
+        hyperparameters['n_classes'] = train_dataset.classes()
         # define model
-        model: Model = DNABert(
-            model_name='model',
-            model_path=model_path,
-            hyperparameter=hyperparameter,
+        model: MyModel = DNABert(
+            model_dir=model_dir,
+            model_name=model_name,
+            hyperparameter=hyperparameters,
             weights=class_weights
         )
         # log model hyper parameters
         logger.info('Model hyperparameter')
         logger.info(model.print_hyperparameter())
-
         # init optimizer
         optimizer = AdamW(
             model.parameters(),
@@ -242,7 +167,6 @@ def train_gene_classifier(
         )
         # put model on device available
         model.to(device)
-
         # train it
         model.train_model(
             train_loader=train_loader,
@@ -253,33 +177,23 @@ def train_gene_classifier(
             val_loader=val_loader,
             logger=train_logger
         )
-
         # close loggers
         close_loggers([train_logger, logger])
         del train_logger
         del logger
-
-    # get path of model and log
-    log_path, model_path = create_folders(
-        task=TASK,
-        model_name=model_selected,
-        parent_name=test_name
-    )
-
-    # if grid search is True and this model is already evaluated, return
-    if grid_search and os.path.exists(os.path.join(log_path, 'result.log')):
-        return
+    # if the model is already trained and the grid search parameter is set to true then stop
+    elif grid_search:
+        return model_path
 
     # init loggers
     logger: logging.Logger = setup_logger(
         'logger',
-        os.path.join(log_path, 'logger.log')
+        os.path.join(log_dir, 'logger.log')
     )
-    result: logging.Logger = setup_logger(
+    result_logger: logging.Logger = setup_logger(
         'result',
-        os.path.join(log_path, 'result.log')
+        os.path.join(test_dir, 'result.log')
     )
-
     # load test dataset
     test_dataset = TranscriptDataset(
         root_dir=os.path.join(os.getcwd(), 'data'),
@@ -289,27 +203,23 @@ def train_gene_classifier(
     # log test dataset status
     logger.info('No. records test set')
     logger.info(test_dataset.print_dataset_status())
-
     # load model
-    model: Model = torch.load(os.path.join(model_path, 'model.h5'))
+    model: MyModel = torch.load(model_path)
     # set device gpu if cuda is available
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # set model on gpu
     model.to(device)
-
     # create test data loader
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=True
     )
-
     # test model
     y_true, y_pred = model.predict(
         test_loader=test_loader,
         device=device
     )
-
     # log classification report
     report: str = classification_report(
         y_true,
@@ -318,16 +228,14 @@ def train_gene_classifier(
         zero_division=1,
         target_names=test_dataset.get_labels_dict().keys()
     )
-    result.info(report)
-
+    result_logger.info(report)
     # close loggers
-    close_loggers([logger, result])
+    close_loggers([logger, result_logger])
     del logger
-    del result
-
+    del result_logger
     # save result
     save_result(
-        result_csv_path=os.path.join(os.getcwd(), 'log', TASK, model_selected, 'results.csv'),
+        result_csv_path=os.path.join(result_dir, task, model_selected, 'results.csv'),
         len_read=len_read,
         len_kmer=len_kmer,
         n_words=n_words,
@@ -336,53 +244,19 @@ def train_gene_classifier(
         y_true=y_true,
         y_pred=y_pred
     )
+    # return model_path
+    return model_path
 
 
 if __name__ == '__main__':
-    # init parser for inputs
-    parser = argparse.ArgumentParser()
+    # define inputs for this script
+    __args, __hyperparameters = define_gene_classifier_inputs()
 
-    # general parameters
-    parser.add_argument('-len_read', dest='len_read', action='store',
-                        type=int, default=150, help='define length of reads')
-    parser.add_argument('-len_kmer', dest='len_kmer', action='store',
-                        type=int, default=6, help='define length of kmers')
-    parser.add_argument('-n_words', dest='n_words', action='store',
-                        type=int, default=20, help='number of kmers inside a sentence')
-    parser.add_argument('-tokenizer_selected', dest='tokenizer_selected', action='store',
-                        type=str, default='dna_bert_n', help='select the tokenizer to be used')
-    parser.add_argument('-batch_size', dest='batch_size', action='store',
-                        type=int, default=512, help='define batch size')
+    # load dotenv file
+    load_dotenv(dotenv_path=os.path.join(os.getcwd(), '.env'))
 
-    # gene classifier parameters
-    define_input_args_gene_classifier_hyperparameters(arg_parser=parser)
-
-    # train parameters
-    parser.add_argument('-grid_search', dest='grid_search', action='store', type=str2bool,
-                        default=False, help='set true if this script is launching from grid_search script')
-
-    # parse arguments
-    args = parser.parse_args()
-
-    # check value of model hyperparameters
-    check_gene_classifier_hyperparameters(
-        args_dict=vars(args)
-    )
-
-    # init hyperparameters config
-    config: Dict[str, any] = init_hyperparameters_gene_classifier_dict(
-        args_dict=vars(args)
-    )
-
-    # execute main
+    # execute train_gene_classifier method
     train_gene_classifier(
-        len_read=args.len_read,
-        len_kmer=args.len_kmer,
-        n_words=args.n_words,
-        model_selected=args.model_selected,
-        tokenizer_selected=args.tokenizer_selected,
-        batch_size=args.batch_size,
-        hyperparameter=config,
-        re_train=args.re_train,
-        grid_search=args.grid_search
+        **__args,
+        hyperparameters=__hyperparameters
     )
