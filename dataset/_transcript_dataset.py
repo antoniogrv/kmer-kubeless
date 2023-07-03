@@ -9,7 +9,6 @@ from multiprocessing.pool import Pool
 from functools import partial
 
 from tabulate import tabulate
-from dotenv import load_dotenv
 import pandas as pd
 import pickle
 import torch
@@ -49,8 +48,7 @@ class TranscriptDataset(MyDataset):
         )
 
         # ======================== Load Gene Panel ======================== #
-        load_dotenv(os.path.join(os.getcwd(), 'data', '.env'))
-        self.__gene_panel_path: str = os.path.join(os.getcwd(), os.getenv('LOCAL_GENES_PANEL_PATH'))
+        self.__gene_panel_path: str = self.conf['genes_panel_path']
         with open(self.__gene_panel_path, 'r') as gene_panel_file:
             self.__genes_list: List[str] = gene_panel_file.read().split('\n')
         self.update_file(self.__gene_panel_path)
@@ -78,14 +76,9 @@ class TranscriptDataset(MyDataset):
             # create directory if it doesn't exist
             if not os.path.exists(__gt_shredder_dir):
                 os.makedirs(__gt_shredder_dir)
-            # load transcript dir path
-            __transcript_dir_path: str = os.path.join(
-                os.getcwd(),
-                os.getenv('LOCAL_TRANSCRIPT_DIR')
-            )
             # execute gt-shredder on all fastq files
             gt_shredder(
-                transcript_dir=__transcript_dir_path,
+                transcript_dir=self.conf['transcript_dir'],
                 output_dir=__gt_shredder_dir,
                 len_read=self.conf['len_read']
             )
@@ -287,12 +280,16 @@ class TranscriptDataset(MyDataset):
 
     @staticmethod
     def create_conf(
+            genes_panel_path: str,
+            transcript_dir: str,
             len_read: int = 150,
             len_kmer: int = 6,
             n_words: int = 30,
             tokenizer: PreTrainedTokenizer = None,
     ) -> Dict[str, any]:
         return {
+            'genes_panel_path': genes_panel_path,
+            'transcript_dir': transcript_dir,
             'len_read': len_read,
             'len_kmer': len_kmer,
             'n_words': n_words,
