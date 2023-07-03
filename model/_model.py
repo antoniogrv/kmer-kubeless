@@ -25,19 +25,18 @@ import os
 N_EPOCHS_FOR_CHECKPOINT: Final = 5
 
 
-class Model(nn.Module, metaclass=ABCMeta):
-
+class MyModel(nn.Module, metaclass=ABCMeta):
     @abstractmethod
     def __init__(
             self,
+            model_dir: str,
             model_name: str,
-            model_path: str,
             hyperparameter: Dict[str, any],
             weights: Optional[torch.Tensor]
     ):
         super().__init__()
+        self.__model_dir = model_dir
         self.__model_name = model_name
-        self.__model_path = model_path
         self.__hyperparameter = hyperparameter
         self.__weights = weights
 
@@ -46,12 +45,26 @@ class Model(nn.Module, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def step(self, inputs: Dict[str, any]):
+    def step(self, inputs: Dict[str, any]) -> any:
         pass
 
     @abstractmethod
-    def compute_loss(self, output, target: torch.Tensor):
+    def compute_loss(self, output, target: torch.Tensor) -> torch.Tensor:
         pass
+
+    def check_checkpoint(self) -> [Tuple[str, int]]:
+        # find all model checkpoints path inside model directory
+        models_checkpoint_paths: List[str] = glob(
+            os.path.join(self.__model_dir, f'{self.__model_name}_*.h5')
+        )
+        # if there is not a checkpoint return false
+        if len(models_checkpoint_paths) == 0:
+            return '', 0
+        # otherwise, return the last model checkpoint and number of epochs when the last model is saved
+        else:
+            last_model_path: str = models_checkpoint_paths[-1]
+            last_epoch_done: int = int(last_model_path[last_model_path.rindex('_') + 1:-3])
+            return last_model_path, last_epoch_done
 
     def train_model(
             self,
@@ -73,7 +86,18 @@ class Model(nn.Module, metaclass=ABCMeta):
         # init trigger_times and last_loss for early stopping
         last_loss: float = np.inf
         trigger_times: int = 0
-        best_model: Optional[Model] = None
+        best_model: Optional[MyModel] = None
+
+        # check if there is a checkpoint saved
+        __model_checkpoint_path, __last_epoch_done = self.check_checkpoint()
+        if __last_epoch_done > 0:
+            # load state dict
+            __model_checkpoint: MyModel = torch.load(
+                __model_checkpoint_path
+            )
+            self.load_state_dict(__model_checkpoint.state_dict())
+            # update n_epochs
+            epochs = epochs - __last_epoch_done
 
         for epoch_i in range(epochs):
             # measure the elapsed time of each epoch
@@ -155,13 +179,16 @@ class Model(nn.Module, metaclass=ABCMeta):
                 # save model each 5 epochs
                 if epoch_i % N_EPOCHS_FOR_CHECKPOINT == 0 and epoch_i != 0:
                     torch.save(self if best_model is None else best_model,
-                               os.path.join(self.model_path, f'{self.model_name}_{epoch_i}.h5'))
+                               os.path.join(self.__model_dir, f'{self.__model_name}_{epoch_i}.h5'))
 
         # save final model
-        torch.save(self if best_model is None else best_model, os.path.join(self.model_path, f'{self.model_name}.h5'))
+        torch.save(self if best_model is None else best_model, os.path.join(
+            self.__model_dir,
+            f'{self.__model_name}.h5'
+        ))
 
         # delete checkpoints
-        for model_checkpoint in glob(os.path.join(self.model_path, f'{self.model_name}_*.h5')):
+        for model_checkpoint in glob(os.path.join(self.__model_dir, f'{self.__model_name}_*.h5')):
             os.remove(model_checkpoint)
 
         if logger is not None:
@@ -257,6 +284,10 @@ class Model(nn.Module, metaclass=ABCMeta):
     @property
     def hyperparameter(self) -> Dict[str, any]:
         return self.__hyperparameter
+
+    @abstractmethod
+    def get_n_classes(self) -> int:
+        pass
 
     def print_hyperparameter(self) -> str:
         table: List[List[str, Any]] = [[parameter, value] for parameter, value in self.__hyperparameter.items()]
