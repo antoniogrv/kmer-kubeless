@@ -66,7 +66,6 @@ pip install tabulate
 pip install checksumdir
 pip install python-dotenv
 conda install -c conda-forge biopython
-conda install -c conda-forge scikit-plot
 conda install -c conda-forge matplotlib
 
 apt install genometools
