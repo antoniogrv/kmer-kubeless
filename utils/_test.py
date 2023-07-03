@@ -30,7 +30,8 @@ def init_test(
         re_train: bool
 ):
     # get log dir and model dir
-    test_dir: str = os.path.join(result_dir, task, model_selected, test_id)
+    parent_dir: str = os.path.join(result_dir, task, model_selected)
+    test_dir: str = os.path.join(parent_dir, test_id)
     log_dir: str = os.path.join(test_dir, 'log')
     model_dir: str = os.path.join(test_dir, 'model')
 
@@ -47,4 +48,4 @@ def init_test(
     # check if the model has not already been trained
     model_path: str = os.path.join(model_dir, f'{model_name}.h5')
 
-    return test_dir, log_dir, model_dir, model_path
+    return parent_dir, test_dir, log_dir, model_dir, model_path
