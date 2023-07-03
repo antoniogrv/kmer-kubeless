@@ -1,4 +1,5 @@
 from typing import Tuple
+from typing import List
 from typing import Dict
 
 import argparse
@@ -63,54 +64,54 @@ def define_fusion_training_parameters(
 
 def define_gene_classifier_hyperparameters(
         arg_parser: argparse.ArgumentParser,
-        suffix: str = ''
+        prefix: str = ''
 ) -> int:
     # add all hyperparameters definition
     hyperparameters_inputs: Dict[str, Dict[str, any]] = {
-        f'-{suffix}hidden_size': {
-            'dest': f'{suffix}hidden_size',
+        f'-{prefix}hidden_size': {
+            'dest': f'{prefix}hidden_size',
             'action': 'store',
             'type': int,
             'default': 1024,
             'help': 'define number of hidden channels'
         },
-        f'-{suffix}n_hidden_layers': {
-            'dest': f'{suffix}n_hidden_layers',
+        f'-{prefix}n_hidden_layers': {
+            'dest': f'{prefix}n_hidden_layers',
             'action': 'store',
             'type': int,
             'default': 7,
             'help': 'define number of hidden layers'
         },
-        f'-{suffix}rnn': {
-            'dest': f'{suffix}rnn',
+        f'-{prefix}rnn': {
+            'dest': f'{prefix}rnn',
             'action': 'store',
             'type': str,
             'default': 'lstm',
             'help': 'define type of recurrent layer'
         },
-        f'-{suffix}n_rnn_layers': {
-            'dest': f'{suffix}n_rnn_layers',
+        f'-{prefix}n_rnn_layers': {
+            'dest': f'{prefix}n_rnn_layers',
             'action': 'store',
             'type': int,
             'default': 1,
             'help': 'define number of recurrent layers'
         },
-        f'-{suffix}n_attention_heads': {
-            'dest': f'{suffix}n_attention_heads',
+        f'-{prefix}n_attention_heads': {
+            'dest': f'{prefix}n_attention_heads',
             'action': 'store',
             'type': int,
             'default': 4,
             'help': 'define number of attention heads'
         },
-        f'-{suffix}n_beams': {
-            'dest': f'{suffix}n_beams',
+        f'-{prefix}n_beams': {
+            'dest': f'{prefix}n_beams',
             'action': 'store',
             'type': int,
             'default': 1,
             'help': 'define number of beams'
         },
-        f'-{suffix}dropout': {
-            'dest': f'{suffix}dropout',
+        f'-{prefix}dropout': {
+            'dest': f'{prefix}dropout',
             'action': 'store',
             'type': float,
             'default': 0.5,
@@ -174,13 +175,13 @@ def check_tokenizer(
 
 def check_gene_classifier_hyperparameters(
         args_dict: Dict[str, str],
-        suffix: str = ''
+        prefix: str = ''
 ) -> None:
     # check model selected
-    if args_dict[f'{suffix}model_selected'] not in ['dna_bert']:
+    if args_dict[f'{prefix}model_selected'] not in ['dna_bert']:
         raise ValueError('select one of these models: ["dna_bert"]')
     # check recurrent layer selected
-    if args_dict[f'{suffix}rnn'] not in ['lstm', 'gru']:
+    if args_dict[f'{prefix}rnn'] not in ['lstm', 'gru']:
         raise ValueError('select one of these recurrent layers: ["lstm", "gru"]')
 
 
@@ -209,7 +210,10 @@ def define_gene_classifier_inputs() -> Tuple[Dict[str, any], Dict[str, any]]:
     check_gene_classifier_hyperparameters(vars(args), '')
 
     # split in general and model arguments
-    return dict(list(vars(args).items())[:-n_hyperparameters]), dict(list(vars(args).items())[n_hyperparameters + 1:])
+    __args: Dict[str, any] = dict(list(vars(args).items())[:-n_hyperparameters])
+    __hyperparameters: Dict[str, any] = dict(list(vars(args).items())[n_hyperparameters + 1:])
+
+    return __args, __hyperparameters
 
 
 def define_fusion_classifier_inputs() -> Tuple[Dict[str, any], Dict[str, any], Dict[str, any]]:
@@ -225,10 +229,19 @@ def define_fusion_classifier_inputs() -> Tuple[Dict[str, any], Dict[str, any], D
     args = arg_parser.parse_args()
     # check value of inputs
     check_tokenizer(vars(args))
-    check_gene_classifier_hyperparameters(vars(args), '')
+    check_gene_classifier_hyperparameters(vars(args), 'gc_')
     check_fusion_classifier_hyperparameters(vars(args))
-
     # split in general and model arguments
-    return {
+    n_args = len(list(vars(args).items()))
+    general_args = n_args - n_hyperparameters_gc - n_hyperparameters
+    __args: Dict[str, any] = dict(list(vars(args).items())[:general_args])
+    __gc_hyperparameters: Dict[str, any] = dict(
+        list(vars(args).items())[general_args:general_args + n_hyperparameters_gc])
+    __hyperparameters: Dict[str, any] = dict(list(vars(args).items())[-n_hyperparameters:])
+    # change prefix of keys in gc dict
+    keys: List[str] = list(__gc_hyperparameters.copy().keys())
+    for key in keys:
+        new_key: str = key[3:]
+        __gc_hyperparameters[new_key] = __gc_hyperparameters.pop(key)
 
-    }
+    return __args, __gc_hyperparameters, __hyperparameters
