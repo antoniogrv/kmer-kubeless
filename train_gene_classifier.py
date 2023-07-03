@@ -41,7 +41,7 @@ def train_gene_classifier(
         grid_search: bool,
 ) -> str:
     # get value from .env
-    root_dir: Final = os.path.join(os.getcwd(), os.getenv('ROOT_LOCAL_DIR'))
+    root_dir: Final = os.getenv('ROOT_LOCAL_DIR')
     # init tokenizer
     tokenizer = Optional[MyDNATokenizer]
     if tokenizer_selected == 'dna_bert':
@@ -66,8 +66,8 @@ def train_gene_classifier(
     )
     # create dataset configuration
     dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
-        genes_panel_path=os.path.join(os.getcwd(), os.getenv('GENES_PANEL_LOCAL_PATH')),
-        transcript_dir=os.path.join(os.getcwd(), os.getenv('TRANSCRIPT_LOCAL_DIR')),
+        genes_panel_path=os.getenv('GENES_PANEL_LOCAL_PATH'),
+        transcript_dir=os.getenv('TRANSCRIPT_LOCAL_DIR'),
         len_read=len_read,
         len_kmer=len_kmer,
         n_words=n_words,
@@ -78,7 +78,7 @@ def train_gene_classifier(
     result_dir: str = os.path.join(os.getcwd(), os.getenv('RESULTS_LOCAL_DIR'))
     model_name: str = os.getenv('MODEL_NAME')
     # init test
-    test_dir, log_dir, model_dir, model_path = init_test(
+    parent_dir, test_dir, log_dir, model_dir, model_path = init_test(
         result_dir=result_dir,
         task=task,
         model_selected=model_selected,
@@ -98,17 +98,19 @@ def train_gene_classifier(
             'train',
             os.path.join(log_dir, 'train.log')
         )
+
         # load train and validation dataset
         train_dataset = TranscriptDataset(
             root_dir=root_dir,
             conf=dataset_conf,
-            dataset_type='val'
+            dataset_type='train'
         )
         val_dataset = TranscriptDataset(
             root_dir=root_dir,
             conf=dataset_conf,
             dataset_type='val'
         )
+
         # log information
         logger.info(f'Read len: {len_read}')
         logger.info(f'Kmers len: {len_kmer}')
@@ -130,6 +132,7 @@ def train_gene_classifier(
         logger.info(train_dataset.print_dataset_status())
         logger.info('No. records val set')
         logger.info(val_dataset.print_dataset_status())
+
         # load train and validation dataloader
         train_loader: DataLoader = DataLoader(
             train_dataset,
@@ -141,10 +144,12 @@ def train_gene_classifier(
             batch_size=batch_size,
             shuffle=True
         )
+
         # set device gpu if cuda is available
         device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # evaluating weights for criterion function
         class_weights: torch.Tensor = evaluate_weights(train_dataset).to(device)
+
         # update hyperparameter
         hyperparameters['vocab_size'] = tokenizer.vocab_size
         hyperparameters['n_classes'] = train_dataset.classes()
@@ -155,9 +160,11 @@ def train_gene_classifier(
             hyperparameter=hyperparameters,
             weights=class_weights
         )
+
         # log model hyper parameters
         logger.info('Model hyperparameter')
         logger.info(model.print_hyperparameter())
+
         # init optimizer
         optimizer = AdamW(
             model.parameters(),
@@ -165,6 +172,7 @@ def train_gene_classifier(
             eps=1e-8,
             betas=(0.9, 0.999)
         )
+
         # put model on device available
         model.to(device)
         # train it
@@ -172,15 +180,17 @@ def train_gene_classifier(
             train_loader=train_loader,
             optimizer=optimizer,
             device=device,
-            epochs=1,
+            epochs=1000,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
         )
+
         # close loggers
         close_loggers([train_logger, logger])
         del train_logger
         del logger
+
     # if the model is already trained and the grid search parameter is set to true then stop
     elif grid_search:
         return model_path
@@ -194,21 +204,25 @@ def train_gene_classifier(
         'result',
         os.path.join(test_dir, 'result.log')
     )
+
     # load test dataset
     test_dataset = TranscriptDataset(
         root_dir=root_dir,
         conf=dataset_conf,
         dataset_type='test'
     )
+
     # log test dataset status
     logger.info('No. records test set')
     logger.info(test_dataset.print_dataset_status())
+
     # load model
     model: MyModel = torch.load(model_path)
     # set device gpu if cuda is available
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # set model on gpu
     model.to(device)
+
     # create test data loader
     test_loader = DataLoader(
         test_dataset,
@@ -220,6 +234,7 @@ def train_gene_classifier(
         test_loader=test_loader,
         device=device
     )
+
     # log classification report
     report: str = classification_report(
         y_true,
@@ -229,13 +244,15 @@ def train_gene_classifier(
         target_names=test_dataset.get_labels_dict().keys()
     )
     result_logger.info(report)
+
     # close loggers
     close_loggers([logger, result_logger])
     del logger
     del result_logger
+
     # save result
     save_result(
-        result_csv_path=os.path.join(result_dir, task, model_selected, 'results.csv'),
+        result_csv_path=os.path.join(parent_dir, 'results.csv'),
         len_read=len_read,
         len_kmer=len_kmer,
         n_words=n_words,
@@ -244,6 +261,7 @@ def train_gene_classifier(
         y_true=y_true,
         y_pred=y_pred
     )
+
     # return model_path
     return model_path
 
