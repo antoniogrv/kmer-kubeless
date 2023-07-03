@@ -14,13 +14,13 @@ from model import MyModel
 class FusionClassifier(MyModel):
     def __init__(
             self,
+            model_dir: str,
             model_name: str,
-            model_path: str,
             hyperparameter: Dict[str, any],
             weights: Optional[torch.Tensor]
     ):
         # call super class
-        super().__init__(model_name, model_path, hyperparameter, weights)
+        super().__init__(model_dir, model_name, hyperparameter, weights)
 
         # init configuration of model
         self.__gene_classifier_path: str = hyperparameter['gene_classifier']
@@ -42,7 +42,7 @@ class FusionClassifier(MyModel):
         # classification layer
         self.classification = nn.Linear(
             in_features=self.hyperparameter['hidden_size'],
-            out_features=self.hyperparameter['n_classes']
+            out_features=1 if self.hyperparameter['n_classes'] == 2 else self.hyperparameter['n_classes']
         )
 
         # init loss function
