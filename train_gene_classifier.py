@@ -17,7 +17,6 @@ from model import MyModel
 from model import DNABert
 
 from torch.optim import AdamW
-from sklearn.metrics import classification_report
 
 from utils import SEPARATOR
 from utils import define_gene_classifier_inputs
@@ -25,8 +24,9 @@ from utils import create_test_id
 from utils import init_test
 from utils import setup_logger
 from utils import evaluate_weights
-from utils import close_loggers
+from utils import log_results
 from utils import save_result
+from utils import close_loggers
 
 
 def train_gene_classifier(
@@ -235,15 +235,14 @@ def train_gene_classifier(
         device=device
     )
 
-    # log classification report
-    report: str = classification_report(
-        y_true,
-        y_pred,
-        digits=3,
-        zero_division=1,
-        target_names=test_dataset.get_labels_dict().keys()
+    # log results
+    log_results(
+        y_true=y_true,
+        y_pred=y_pred,
+        target_names=list(test_dataset.get_labels_dict().keys()),
+        logger=result_logger,
+        test_dir=test_dir
     )
-    result_logger.info(report)
 
     # close loggers
     close_loggers([logger, result_logger])
