@@ -41,7 +41,7 @@ def train_gene_classifier(
         grid_search: bool,
 ) -> str:
     # get value from .env
-    root_dir: Final = os.getenv('ROOT_LOCAL_DIR')
+    root_dir: Final = os.path.join(os.getcwd(), os.getenv('ROOT_LOCAL_DIR'))
     # init tokenizer
     tokenizer = Optional[MyDNATokenizer]
     if tokenizer_selected == 'dna_bert':
