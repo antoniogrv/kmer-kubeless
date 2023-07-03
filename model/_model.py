@@ -267,11 +267,10 @@ class MyModel(nn.Module, metaclass=ABCMeta):
         y_true = torch.cat(y_true, dim=0)
 
         # Apply softmax to calculate probabilities
-        probs: np.ndarray = F.softmax(all_outputs, dim=1).cpu().numpy()
-        y_pred: np.ndarray = np.argmax(probs, axis=1)
+        y_probs: np.ndarray = F.softmax(all_outputs, dim=1).cpu().numpy()
         y_true = y_true.cpu().numpy()
 
-        return y_true, y_pred
+        return y_true, y_probs
 
     @property
     def model_name(self) -> str:
