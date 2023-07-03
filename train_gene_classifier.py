@@ -102,7 +102,7 @@ def train_gene_classifier(
         train_dataset = TranscriptDataset(
             root_dir=root_dir,
             conf=dataset_conf,
-            dataset_type='train'
+            dataset_type='val'
         )
         val_dataset = TranscriptDataset(
             root_dir=root_dir,
@@ -172,7 +172,7 @@ def train_gene_classifier(
             train_loader=train_loader,
             optimizer=optimizer,
             device=device,
-            epochs=1000,
+            epochs=1,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
@@ -196,7 +196,7 @@ def train_gene_classifier(
     )
     # load test dataset
     test_dataset = TranscriptDataset(
-        root_dir=os.path.join(os.getcwd(), 'data'),
+        root_dir=root_dir,
         conf=dataset_conf,
         dataset_type='test'
     )
