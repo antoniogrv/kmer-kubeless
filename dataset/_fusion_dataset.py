@@ -1,6 +1,5 @@
 from typing import Hashable
 
-import dotenv
 from pandas import Series
 from typing import Union
 from typing import Tuple
@@ -14,6 +13,7 @@ from tabulate import tabulate
 import pandas as pd
 import numpy as np
 import pickle
+import dotenv
 import torch
 import os
 
@@ -326,7 +326,7 @@ class FusionDataset(MyDataset):
 
     @staticmethod
     def create_conf(
-            transcript_dir: str,
+            genes_panel_path: str,
             len_read: int = 150,
             len_kmer: int = 6,
             n_words: int = 30,
@@ -335,7 +335,7 @@ class FusionDataset(MyDataset):
             classification_type: str = 'fusion'
     ) -> Dict[str, any]:
         return {
-            'transcript_dir': transcript_dir,
+            'genes_panel_path': genes_panel_path,
             'len_read': len_read,
             'len_kmer': len_kmer,
             'n_words': n_words,
