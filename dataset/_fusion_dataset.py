@@ -1,4 +1,6 @@
 from typing import Hashable
+
+import dotenv
 from pandas import Series
 from typing import Union
 from typing import Tuple
@@ -9,7 +11,6 @@ from multiprocessing.pool import Pool
 from functools import partial
 
 from tabulate import tabulate
-from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
 import pickle
@@ -50,8 +51,7 @@ class FusionDataset(MyDataset):
         )
 
         # ======================== Load Gene Panel ======================== #
-        load_dotenv(os.path.join(os.getcwd(), 'data', '.env'))
-        self.__gene_panel_path: str = os.path.join(os.getcwd(), os.getenv('LOCAL_GENES_PANEL_PATH'))
+        self.__gene_panel_path: str = self.conf['genes_panel_path']
         with open(self.__gene_panel_path, 'r') as gene_panel_file:
             self.__genes_list: List[str] = gene_panel_file.read().split('\n')
         self.update_file(self.__gene_panel_path)
@@ -67,11 +67,13 @@ class FusionDataset(MyDataset):
             if not os.path.exists(__fusim_dir):
                 os.makedirs(__fusim_dir)
             # execute fusion simulator
+            dotenv.load_dotenv(dotenv_path=os.path.join(os.getcwd(), '.env'))
             fusion_simulator(
                 fasta_format_path=__fusim_fasta_format_path,
                 text_format_path=__fusim_text_format_path,
                 n_fusions=self.conf['n_fusion'],
-                genes_list=self.__genes_list
+                genes_list=self.__genes_list,
+                fusim_simulator_dir=os.getenv('FUSIM_LOCAL_DIR')
             )
             self.update_dir(__fusim_dir)
 
@@ -324,6 +326,7 @@ class FusionDataset(MyDataset):
 
     @staticmethod
     def create_conf(
+            transcript_dir: str,
             len_read: int = 150,
             len_kmer: int = 6,
             n_words: int = 30,
@@ -332,6 +335,7 @@ class FusionDataset(MyDataset):
             classification_type: str = 'fusion'
     ) -> Dict[str, any]:
         return {
+            'transcript_dir': transcript_dir,
             'len_read': len_read,
             'len_kmer': len_kmer,
             'n_words': n_words,
