@@ -230,15 +230,15 @@ def train_gene_classifier(
         shuffle=True
     )
     # test model
-    y_true, y_pred = model.predict(
+    y_true, y_probs = model.predict(
         test_loader=test_loader,
         device=device
     )
 
     # log results
-    log_results(
+    y_pred = log_results(
         y_true=y_true,
-        y_pred=y_pred,
+        y_probs=y_probs,
         target_names=list(test_dataset.get_labels_dict().keys()),
         logger=result_logger,
         test_dir=test_dir
