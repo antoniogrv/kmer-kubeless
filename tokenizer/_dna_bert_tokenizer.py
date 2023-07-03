@@ -11,7 +11,7 @@ class DNABertTokenizer(MyDNATokenizer):
             self,
             root_dir: str,
             len_kmer: int = 6,
-            add_n: bool = False,
+            add_n: bool = True,
             do_lower_case: bool = False,
             pad_token: str = '[PAD]',
             unk_token: str = '[UNK]',
