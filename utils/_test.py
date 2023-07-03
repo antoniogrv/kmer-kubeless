@@ -1,20 +1,19 @@
 from typing import Dict
-from typing import Any
 
 import shutil
 import os
 
 
-def create_test_name(
+def create_test_id(
         len_read: int,
         len_kmer: int,
         n_words: int,
-        tokenizer_selected: str,
-        hyperparameter: Dict[str, Any]
+        tokenizer: str,
+        hyperparameters: Dict[str, any]
 ) -> str:
-    test_name: str = f'{len_read}_{len_kmer}_{n_words}_{tokenizer_selected}'
-    for parameter in hyperparameter.keys():
-        value = hyperparameter[parameter]
+    test_name: str = f'{len_read}_{len_kmer}_{n_words}_{tokenizer}'
+    for parameter in hyperparameters.keys():
+        value = hyperparameters[parameter]
         if isinstance(value, float):
             value = int(value * 10)
         test_name += f'_{parameter}_{value}'
@@ -22,19 +21,30 @@ def create_test_name(
     return test_name
 
 
-def test_check(task: str, model_name: str, parent_name: str) -> bool:
-    log_path = os.path.join(os.getcwd(), 'log', task, model_name, parent_name)
-    if os.path.exists(log_path):
-        model_path = os.path.join(log_path, 'model', 'model.h5')
-        if os.path.exists(model_path):
-            return True
-        else:
-            shutil.rmtree(log_path)
-            return False
-    else:
-        return False
+def init_test(
+        result_dir: str,
+        task: str,
+        model_selected: str,
+        test_id: str,
+        model_name: str,
+        re_train: bool
+):
+    # get log dir and model dir
+    test_dir: str = os.path.join(result_dir, task, model_selected, test_id)
+    log_dir: str = os.path.join(test_dir, 'log')
+    model_dir: str = os.path.join(test_dir, 'model')
 
+    # control if you have to retrain
+    if re_train:
+        for directory in [log_dir, model_dir]:
+            shutil.rmtree(directory)
 
-def evaluate_check(task: str, model_name: str, parent_name: str) -> bool:
-    result_path = os.path.join(os.getcwd(), 'log', task, model_name, parent_name, 'result.log')
-    return os.path.exists(result_path)
+    # create directories
+    for directory in [log_dir, model_dir]:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+    # check if the model has not already been trained
+    model_path: str = os.path.join(model_dir, f'{model_name}.h5')
+
+    return test_dir, log_dir, model_dir, model_path
