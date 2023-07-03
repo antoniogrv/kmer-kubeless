@@ -39,17 +39,17 @@ def fusion_simulator(
         fasta_format_path: str,
         text_format_path: str,
         n_fusions: int,
-        genes_list: List[str]
+        genes_list: List[str],
+        fusim_simulator_dir: str,
 ) -> None:
-    # init path of fusion simulator directory
-    fusion_simulator_dir: str = os.path.join(os.getcwd(), 'fusim-0.2.2')
+    # for each gene in genes panel
     for gene in tqdm(genes_list, desc=f'Executing fusim...', total=len(genes_list)):
         genes_list_tmp: List[str] = genes_list.copy()
         genes_list_tmp.remove(gene)
         # init command
-        command: str = f'java -jar {os.path.join(fusion_simulator_dir, "fusim.jar")} ' \
-                       f'-g {os.path.join(fusion_simulator_dir, "refFlat.txt")} ' \
-                       f'-r {os.path.join(fusion_simulator_dir, "hg19.fa")} ' \
+        command: str = f'java -jar {os.path.join(fusim_simulator_dir, "fusim.jar")} ' \
+                       f'-g {os.path.join(fusim_simulator_dir, "refFlat.txt")} ' \
+                       f'-r {os.path.join(fusim_simulator_dir, "hg19.fa")} ' \
                        f'-f {fasta_format_path.format(gene=gene)}_tmp ' \
                        f'-t {text_format_path.format(gene=gene)} ' \
                        f'-n {n_fusions} ' \
