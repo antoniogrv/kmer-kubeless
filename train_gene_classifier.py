@@ -62,7 +62,7 @@ def train_gene_classifier(
         len_kmer=len_kmer,
         n_words=n_words,
         tokenizer=tokenizer,
-        hyperparameters=hyperparameters
+        gc_hyperparameters=hyperparameters
     )
     # create dataset configuration
     dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
