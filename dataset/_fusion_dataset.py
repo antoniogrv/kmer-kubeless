@@ -193,8 +193,8 @@ class FusionDataset(MyDataset):
                     __chimeric_kmers_dataset['gene_1'] != __chimeric_kmers_dataset['gene_2'], 0, 1
                 )
                 self.__labels: Dict[str, int] = {
-                    'non-chimeric': 0,
-                    'chimeric': 1
+                    'chimeric': 0,
+                    'non-chimeric': 1
                 }
                 with open(self.__labels_path, 'wb') as handle:
                     pickle.dump(self.__labels, handle, protocol=pickle.HIGHEST_PROTOCOL)
