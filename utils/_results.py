@@ -114,25 +114,33 @@ def plot_roc_curve(
         target_names: List[str],
         roc_curves_path: str
 ):
-    # binarize vector of true
-    y_true_binary = label_binarize(y_true, classes=list(range(len(target_names))))
-
-    # evaluate ROC and auc for each class
+    # init dicts
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
-    for i in range(len(target_names)):
-        fpr[i], tpr[i], _ = roc_curve(y_true_binary[:, i], y_probs[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
-
-    # evaluate micro-averaged ROC curve
-    fpr["micro"], tpr["micro"], _ = roc_curve(y_true_binary.ravel(), y_probs.ravel())
-    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
-
-    # plots roc curves
+    # init fig
     plt.figure(figsize=(10, 10))
-    for idx, class_name in enumerate(target_names):
-        plt.plot(fpr[idx], tpr[idx], label='ROC curve (area = %0.2f) - %s' % (roc_auc[idx], class_name))
+
+    if len(target_names) == 2:
+        fpr[0], tpr[0], _ = roc_curve(y_true, y_probs)
+        roc_auc[0] = auc(fpr[0], tpr[0])
+        # plot roc curve
+        plt.plot(fpr[0], tpr[0], label='ROC curve (area = %0.2f)' % (roc_auc[0]))
+    else:
+        # binarize vector of true
+        y_true_binary = label_binarize(y_true, classes=list(range(len(target_names))))
+        # evaluate ROC and auc for each class
+        for i in range(len(target_names)):
+            fpr[i], tpr[i], _ = roc_curve(y_true_binary[:, i], y_probs[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+        # evaluate micro-averaged ROC curve
+        fpr["micro"], tpr["micro"], _ = roc_curve(y_true_binary.ravel(), y_probs.ravel())
+        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+        # plot roc curves
+        for idx, class_name in enumerate(target_names):
+            plt.plot(fpr[idx], tpr[idx], label='ROC curve (area = %0.2f) - %s' % (roc_auc[idx], class_name))
+
+    # options of plot
     plt.plot([0, 1], [0, 1], 'k--', label='Random Guess')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
