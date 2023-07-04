@@ -14,10 +14,9 @@ from dataset import FusionDataset
 from torch.utils.data import DataLoader
 
 from model import MyModel
-from model import FusionClassifier
+from model import FCFusionClassifier
 
 from torch.optim import AdamW
-from sklearn.metrics import classification_report
 
 from train_gene_classifier import train_gene_classifier
 
@@ -27,8 +26,9 @@ from utils import create_test_id
 from utils import init_test
 from utils import setup_logger
 from utils import evaluate_weights
-from utils import close_loggers
+from utils import log_results
 from utils import save_result
+from utils import close_loggers
 
 
 def train_fusion_classifier(
@@ -58,7 +58,7 @@ def train_fusion_classifier(
         hyperparameters=gc_hyperparameters,
         batch_size=gc_batch_size,
         re_train=gc_re_train,
-        grid_search=grid_search
+        grid_search=True
     )
     # get value from .env
     root_dir: Final = os.getenv('ROOT_LOCAL_DIR')
@@ -82,11 +82,12 @@ def train_fusion_classifier(
         len_kmer=len_kmer,
         n_words=n_words,
         tokenizer=tokenizer,
-        hyperparameters={**gc_hyperparameters, **hyperparameters}
+        gc_hyperparameters=gc_hyperparameters,
+        fc_hyperparameters=hyperparameters
     )
     # create dataset configuration
     dataset_conf: Dict[str, any] = FusionDataset.create_conf(
-        transcript_dir=os.getenv('TRANSCRIPT_LOCAL_DIR'),
+        genes_panel_path=os.getenv('GENES_PANEL_LOCAL_PATH'),
         len_read=len_read,
         len_kmer=len_kmer,
         n_words=n_words,
@@ -170,7 +171,10 @@ def train_fusion_classifier(
         # set device gpu if cuda is available
         device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # evaluating weights for criterion function
-        class_weights: torch.Tensor = evaluate_weights(train_dataset).to(device)
+        class_weights: torch.Tensor = evaluate_weights(
+            train_dataset,
+            binary=(classification_type == 'fusion')
+        ).to(device)
 
         # update hyperparameter
         hyperparameters['gene_classifier'] = gc_model_path
@@ -180,7 +184,7 @@ def train_fusion_classifier(
             hyperparameters['n_classes'] = 2
 
         # define model
-        model: MyModel = FusionClassifier(
+        model: MyModel = FCFusionClassifier(
             model_dir=model_dir,
             model_name=model_name,
             hyperparameter=hyperparameters,
@@ -208,7 +212,7 @@ def train_fusion_classifier(
             train_loader=train_loader,
             optimizer=optimizer,
             device=device,
-            epochs=1000,
+            epochs=1,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
@@ -258,26 +262,26 @@ def train_fusion_classifier(
         shuffle=True
     )
     # test model
-    y_true, y_pred = model.predict(
+    y_true, y_probs = model.predict(
         test_loader=test_loader,
         device=device
     )
 
-    # log classification report
-    report: str = classification_report(
-        y_true,
-        y_pred,
-        digits=3,
-        zero_division=1,
-        target_names=test_dataset.get_labels_dict().keys()
+    # log results
+    y_pred = log_results(
+        y_true=y_true,
+        y_probs=y_probs,
+        target_names=list(test_dataset.get_labels_dict().keys()),
+        logger=result_logger,
+        test_dir=test_dir
     )
-    result_logger.info(report)
 
     # close loggers
     close_loggers([logger, result_logger])
     del logger
     del result_logger
 
+    # save result
     # save result
     save_result(
         result_csv_path=os.path.join(parent_dir, 'results.csv'),
