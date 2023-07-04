@@ -256,7 +256,7 @@ class FusionDataset(MyDataset):
         generation_inputs_phase: bool = generation_sets_phase_flag and self.check_file(self.__inputs_path)
         if not generation_inputs_phase:
             # get number of processes
-            n_proc: int = 5
+            n_proc: int = 1
             # get number of kmers and number of sentences
             __n_kmers: int = self.conf['len_read'] - self.conf['len_kmer'] + 1
             __n_sentences: int = __n_kmers - self.conf['n_words'] + 1
@@ -273,6 +273,7 @@ class FusionDataset(MyDataset):
                     n_sentences=__n_sentences,
                     tokenizer=self.conf['tokenizer']
                 )
+            # TODO: debug the call of this function in parallel
             else:
                 # split dataset on processes
                 rows_for_each_process: List[Tuple[int, int]] = split_dataset_on_processes(
