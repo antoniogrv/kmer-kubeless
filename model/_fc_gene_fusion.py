@@ -11,7 +11,7 @@ from torch.nn import BCELoss
 from model import MyModel
 
 
-class FusionClassifier(MyModel):
+class FCFusionClassifier(MyModel):
     def __init__(
             self,
             model_dir: str,
@@ -28,6 +28,9 @@ class FusionClassifier(MyModel):
         self.gene_classifier: MyModel = torch.load(
             self.__gene_classifier_path
         )
+        # freeze all layer of gene_classifier
+        for param in self.gene_classifier.parameters():
+            param.requires_grad = False
 
         # load configuration
         self.__n_sentences = self.hyperparameter['n_sentences']
@@ -37,6 +40,21 @@ class FusionClassifier(MyModel):
         self.projection = nn.Linear(
             in_features=self.__n_sentences * self.__n_genes,
             out_features=self.hyperparameter['hidden_size']
+        )
+        # init fusion classifier
+        __fusion_classifier_layer = nn.ModuleList(
+            [
+                nn.Linear(
+                    in_features=self.hyperparameter['hidden_size'],
+                    out_features=self.hyperparameter['hidden_size']
+                ),
+                nn.Dropout(p=self.hyperparameter['dropout'])
+            ]
+        )
+        self.fusion_classifier = nn.ModuleList(
+            [
+                __fusion_classifier_layer for _ in range(self.hyperparameter['n_hidden_layers'])
+            ]
         )
 
         # classification layer
