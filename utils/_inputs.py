@@ -93,14 +93,14 @@ def define_gene_classifier_hyperparameters(
             'dest': f'{prefix}n_rnn_layers',
             'action': 'store',
             'type': int,
-            'default': 1,
+            'default': 2,
             'help': 'define number of recurrent layers'
         },
         f'-{prefix}n_attention_heads': {
             'dest': f'{prefix}n_attention_heads',
             'action': 'store',
             'type': int,
-            'default': 4,
+            'default': 1,
             'help': 'define number of attention heads'
         },
         f'-{prefix}n_beams': {
@@ -114,7 +114,7 @@ def define_gene_classifier_hyperparameters(
             'dest': f'{prefix}dropout',
             'action': 'store',
             'type': float,
-            'default': 0.5,
+            'default': 0.6,
             'help': 'define value of dropout probability'
         }
     }
@@ -144,14 +144,14 @@ def define_fusion_classifier_hyperparameters(
             'dest': f'n_hidden_layers',
             'action': 'store',
             'type': int,
-            'default': 7,
+            'default': 1,
             'help': 'define number of hidden layers'
         },
         f'-dropout': {
             'dest': f'dropout',
             'action': 'store',
             'type': float,
-            'default': 0.5,
+            'default': 0.6,
             'help': 'define value of dropout probability'
         }
     }
