@@ -6,7 +6,8 @@ from typing import Dict
 
 import torch
 import torch.nn as nn
-from torch.nn import BCELoss
+from torch.nn import BCEWithLogitsLoss
+from torch.nn import functional as F
 
 from model import MyModel
 
@@ -64,7 +65,7 @@ class FCFusionClassifier(MyModel):
         )
 
         # init loss function
-        self.loss = BCELoss(weight=weights)
+        self.loss = BCEWithLogitsLoss(pos_weight=weights)
 
     def forward(
             self,
@@ -73,7 +74,7 @@ class FCFusionClassifier(MyModel):
             matrix_token_type_ids=None
     ):
         # call bert on each sentence
-        outputs: List[torch.Tensor] = []
+        outputs = []
         for idx in range(len(matrix_input_ids)):
             outputs.append(self.gene_classifier(
                 input_ids=matrix_input_ids[idx],
@@ -83,8 +84,20 @@ class FCFusionClassifier(MyModel):
         # prepare inputs for fusion classifier
         inputs: torch.Tensor = torch.stack(outputs)  # (batch_size, n_sentences, n_genes)
         inputs = torch.flatten(inputs, start_dim=1, end_dim=2)  # (batch_size, n_sentences * n_genes)
-        # use classifier layer
-        outputs = self.classification(inputs)
+
+        # use projection layer
+        outputs = self.projection(inputs)
+        # execute all layers of fusion classifier
+        for layer_idx in range(len(self.fusion_classifier)):
+            outputs = self.fusion_classifier[layer_idx][0](outputs)
+            outputs = self.fusion_classifier[layer_idx][1](outputs)
+            outputs = F.gelu(outputs)
+
+        # use classification layer
+        outputs = self.classification(outputs)
+        # use sigmoid if it binary classification
+        if self.get_n_classes() == 2:
+            outputs = F.sigmoid(outputs)
 
         return outputs
 
@@ -109,8 +122,8 @@ class FCFusionClassifier(MyModel):
             matrix_token_type_ids=inputs['matrix_token_type_ids']
         )
 
-    def compute_loss(self, output, target: torch.Tensor):
-        pass
+    def compute_loss(self, target: torch.Tensor, *outputs):
+        return self.loss(input=outputs[0], target=target.float())
 
     def get_n_classes(self) -> int:
-        pass
+        return self.hyperparameter['n_classes']
