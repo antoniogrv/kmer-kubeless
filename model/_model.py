@@ -49,7 +49,7 @@ class MyModel(nn.Module, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def compute_loss(self, output, target: torch.Tensor) -> torch.Tensor:
+    def compute_loss(self, target: torch.Tensor, *outputs) -> torch.Tensor:
         pass
 
     def check_checkpoint(self) -> [Tuple[str, int]]:
