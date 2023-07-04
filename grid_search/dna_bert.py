@@ -22,5 +22,5 @@ if __name__ == '__main__':
                                            f'-rnn {rnn_layer} ' \
                                            f'-n_rnn_layers {n_rnn_layers} ' \
                                            f'-grid_search True'
-
+                            # train model
                             os.system(command)
