@@ -9,14 +9,21 @@ def create_test_id(
         len_kmer: int,
         n_words: int,
         tokenizer: str,
-        hyperparameters: Dict[str, any]
+        gc_hyperparameters: Dict[str, any],
+        fc_hyperparameters: Dict[str, any] = None
 ) -> str:
     test_name: str = f'{len_read}_{len_kmer}_{n_words}_{tokenizer}'
-    for parameter in hyperparameters.keys():
-        value = hyperparameters[parameter]
+    for parameter in gc_hyperparameters.keys():
+        value = gc_hyperparameters[parameter]
         if isinstance(value, float):
             value = int(value * 10)
         test_name += f'_{parameter}_{value}'
+    if fc_hyperparameters is not None:
+        for parameter in fc_hyperparameters.keys():
+            value = fc_hyperparameters[parameter]
+            if isinstance(value, float):
+                value = int(value * 10)
+            test_name += f'_{parameter}_{value}'
 
     return test_name
 
