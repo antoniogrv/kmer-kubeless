@@ -13,8 +13,8 @@ from tokenizer import DNABertTokenizer
 from dataset import TranscriptDataset
 from torch.utils.data import DataLoader
 
-from model import MyModel
-from model import DNABert
+from model import GeneClassifier
+from model import DNABertGeneClassifier
 
 from torch.optim import AdamW
 
@@ -154,7 +154,7 @@ def train_gene_classifier(
         hyperparameters['vocab_size'] = tokenizer.vocab_size
         hyperparameters['n_classes'] = train_dataset.classes()
         # define model
-        model: MyModel = DNABert(
+        model: GeneClassifier = DNABertGeneClassifier(
             model_dir=model_dir,
             model_name=model_name,
             hyperparameter=hyperparameters,
@@ -217,7 +217,7 @@ def train_gene_classifier(
     logger.info(test_dataset.print_dataset_status())
 
     # load model
-    model: MyModel = torch.load(model_path)
+    model: GeneClassifier = torch.load(model_path)
     # set device gpu if cuda is available
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # set model on gpu
