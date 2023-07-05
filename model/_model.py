@@ -177,7 +177,7 @@ class MyModel(nn.Module, metaclass=ABCMeta):
                     break
 
                 # save model each 5 epochs
-                if epoch_i % N_EPOCHS_FOR_CHECKPOINT == 0 and epoch_i != 0:
+                if (epoch_i + 1) % N_EPOCHS_FOR_CHECKPOINT == 0 and epoch_i != 0:
                     torch.save(self if best_model is None else best_model,
                                os.path.join(self.__model_dir, f'{self.__model_name}_{epoch_i}.h5'))
 
@@ -232,7 +232,7 @@ class MyModel(nn.Module, metaclass=ABCMeta):
             y_probs: np.array = F.sigmoid(all_outputs).cpu().numpy()
             y_pred: np.ndarray = y_probs.round()
         else:
-            # Apply softmax to calculate probabilities
+            # apply softmax to calculate probabilities
             y_probs: np.ndarray = F.softmax(all_outputs, dim=1).cpu().numpy()
             y_pred: np.ndarray = np.argmax(y_probs, axis=1)
         y_true = y_true.cpu().numpy()
@@ -276,7 +276,7 @@ class MyModel(nn.Module, metaclass=ABCMeta):
             # apply sigmoid to calculate probabilities
             y_probs: np.array = F.sigmoid(all_outputs).cpu().numpy()
         else:
-            # Apply softmax to calculate probabilities
+            # apply softmax to calculate probabilities
             y_probs: np.ndarray = F.softmax(all_outputs, dim=1).cpu().numpy()
         y_true = y_true.cpu().numpy()
 
