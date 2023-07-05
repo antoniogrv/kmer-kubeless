@@ -227,9 +227,14 @@ class MyModel(nn.Module, metaclass=ABCMeta):
         all_outputs = torch.cat(all_outputs, dim=0)
         y_true = torch.cat(y_true, dim=0)
 
-        # Apply softmax to calculate probabilities
-        probs: np.ndarray = F.softmax(all_outputs, dim=1).cpu().numpy()
-        y_pred: np.ndarray = np.argmax(probs, axis=1)
+        if self.get_n_classes() == 2:
+            # apply sigmoid to calculate probabilities
+            y_probs: np.array = F.sigmoid(all_outputs).cpu().numpy()
+            y_pred: np.ndarray = y_probs.round()
+        else:
+            # Apply softmax to calculate probabilities
+            y_probs: np.ndarray = F.softmax(all_outputs, dim=1).cpu().numpy()
+            y_pred: np.ndarray = np.argmax(y_probs, axis=1)
         y_true = y_true.cpu().numpy()
 
         # compute the average accuracy and loss over the validation set.
@@ -267,7 +272,12 @@ class MyModel(nn.Module, metaclass=ABCMeta):
         y_true = torch.cat(y_true, dim=0)
 
         # Apply softmax to calculate probabilities
-        y_probs: np.ndarray = F.softmax(all_outputs, dim=1).cpu().numpy()
+        if self.get_n_classes() == 2:
+            # apply sigmoid to calculate probabilities
+            y_probs: np.array = F.sigmoid(all_outputs).cpu().numpy()
+        else:
+            # Apply softmax to calculate probabilities
+            y_probs: np.ndarray = F.softmax(all_outputs, dim=1).cpu().numpy()
         y_true = y_true.cpu().numpy()
 
         return y_true, y_probs

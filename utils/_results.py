@@ -160,7 +160,10 @@ def log_results(
         test_dir: str
 ) -> np.ndarray:
     # evaluate y_pred
-    y_pred: np.ndarray = np.argmax(y_probs, axis=1)
+    if len(target_names) == 2:
+        y_pred: np.ndarray = y_probs.round()
+    else:
+        y_pred: np.ndarray = np.argmax(y_probs, axis=1)
     # get accuracy and balanced accuracy
     accuracy = accuracy_score(y_true, y_pred)
     balanced_accuracy = balanced_accuracy_score(y_true, y_pred)
