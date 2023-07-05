@@ -29,9 +29,6 @@ class FCFusionClassifier(MyModel):
         self.gene_classifier: MyModel = torch.load(
             self.__gene_classifier_path
         )
-        # freeze all layer of gene_classifier
-        for param in self.gene_classifier.parameters():
-            param.requires_grad = False
 
         # load configuration
         self.__n_sentences = self.hyperparameter['n_sentences']
