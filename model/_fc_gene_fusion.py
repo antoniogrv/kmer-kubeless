@@ -21,14 +21,29 @@ class FCFusionClassifier(MyModel):
             weights: Optional[torch.Tensor]
     ):
         # call super class
-        super().__init__(model_dir, model_name, hyperparameter, weights)
+        super().__init__(
+            model_dir,
+            model_name,
+            {
+                'hidden_size': hyperparameter['hidden_size'],
+                'n_hidden_layers': hyperparameter['n_hidden_layers'],
+                'dropout': hyperparameter['dropout'],
+                'gene_classifier': hyperparameter['gene_classifier'],
+                'n_sentences': hyperparameter['n_sentences'],
+                'n_classes': hyperparameter['n_classes']
+            },
+            weights
+        )
 
         # init configuration of model
-        self.__gene_classifier_path: str = hyperparameter['gene_classifier']
+        self.__gene_classifier_path: str = self.hyperparameter['gene_classifier']
         # load gene classifier
         self.gene_classifier: MyModel = torch.load(
             self.__gene_classifier_path
         )
+        # freeze all layer of gene_classifier
+        for param in self.gene_classifier.parameters():
+            param.requires_grad = False
 
         # load configuration
         self.__n_sentences = self.hyperparameter['n_sentences']
@@ -92,9 +107,6 @@ class FCFusionClassifier(MyModel):
 
         # use classification layer
         outputs = self.classification(outputs)
-        # use sigmoid if it binary classification
-        if self.get_n_classes() == 2:
-            outputs = F.sigmoid(outputs)
 
         return outputs
 
