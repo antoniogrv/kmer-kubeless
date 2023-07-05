@@ -7,7 +7,6 @@ from typing import Dict
 import torch
 import torch.nn as nn
 from torch.nn import BCEWithLogitsLoss
-from torch.nn import functional as F
 
 from model import MyModel
 
@@ -21,7 +20,16 @@ class ConvClassifier(MyModel):
             weights: Optional[torch.Tensor]
     ):
         # call super class
-        super().__init__(model_dir, model_name, hyperparameter, weights)
+        super().__init__(
+            model_dir,
+            model_name,
+            {
+                'gene_classifier': hyperparameter['gene_classifier'],
+                'n_sentences': hyperparameter['n_sentences'],
+                'n_classes': hyperparameter['n_classes']
+            },
+            weights
+        )
 
         # init configuration of model
         self.__gene_classifier_path: str = hyperparameter['gene_classifier']
@@ -91,9 +99,6 @@ class ConvClassifier(MyModel):
         # use classification layer
         outputs = outputs.view(batch_size, -1)
         outputs = self.classification(outputs)
-        # use sigmoid if it binary classification
-        if self.get_n_classes() == 2:
-            outputs = F.sigmoid(outputs)
 
         return outputs
 
