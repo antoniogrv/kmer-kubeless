@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 
 from model import MyModel
 from model import FCFusionClassifier
+from model import ConvClassifier
 
 from torch.optim import AdamW
 
@@ -184,12 +185,21 @@ def train_fusion_classifier(
             hyperparameters['n_classes'] = 2
 
         # define model
-        model: MyModel = FCFusionClassifier(
-            model_dir=model_dir,
-            model_name=model_name,
-            hyperparameter=hyperparameters,
-            weights=class_weights
-        )
+        model: Optional[MyModel] = None
+        if model_selected == 'fc':
+            model: MyModel = FCFusionClassifier(
+                model_dir=model_dir,
+                model_name=model_name,
+                hyperparameter=hyperparameters,
+                weights=class_weights
+            )
+        elif model_selected == 'conv':
+            model: MyModel = ConvClassifier(
+                model_dir=model_dir,
+                model_name=model_name,
+                hyperparameter=hyperparameters,
+                weights=class_weights
+            )
 
         # log model hyper parameters
         logger.info('Gene classifier hyperparameter')
@@ -212,7 +222,7 @@ def train_fusion_classifier(
             train_loader=train_loader,
             optimizer=optimizer,
             device=device,
-            epochs=1,
+            epochs=1000,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
@@ -281,7 +291,6 @@ def train_fusion_classifier(
     del logger
     del result_logger
 
-    # save result
     # save result
     save_result(
         result_csv_path=os.path.join(parent_dir, 'results.csv'),
