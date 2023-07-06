@@ -109,11 +109,13 @@ class DNABertGeneClassifier(GeneClassifier):
 
     def embedding_step(self, inputs: Dict[str, any]) -> any:
         # call self.bert and return pooled results
-        return self.bert(
-            input_ids=inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            token_type_ids=inputs['token_type_ids']
-        )[1]
+        return self.dropout(
+            self.bert(
+                input_ids=inputs['input_ids'],
+                attention_mask=inputs['attention_mask'],
+                token_type_ids=inputs['token_type_ids']
+            )[1]
+        )
 
     def compute_loss(self, target: torch.Tensor, *outputs):
         logits: torch.Tensor = outputs[0][0]
