@@ -10,6 +10,7 @@ from torch.nn import BCEWithLogitsLoss
 from torch.nn import functional as F
 
 from model import MyModel
+from model import GeneClassifier
 
 
 class FCFusionClassifier(MyModel):
@@ -38,23 +39,24 @@ class FCFusionClassifier(MyModel):
         # init configuration of model
         self.__gene_classifier_path: str = self.hyperparameter['gene_classifier']
         # load gene classifier
-        self.gene_classifier: MyModel = torch.load(
+        self.gene_classifier: GeneClassifier = torch.load(
             self.__gene_classifier_path
         )
+
         # freeze all layer of gene_classifier
-        for param in self.gene_classifier.parameters():
-            param.requires_grad = False
+        if self.hyperparameter['freeze']:
+            for param in self.gene_classifier.get_embedding_layer().parameters():
+                param.requires_grad = False
 
         # load configuration
         self.__n_sentences = self.hyperparameter['n_sentences']
-        self.__n_genes = self.gene_classifier.get_n_classes()
 
         # projection layer
         self.projection = nn.Linear(
-            in_features=self.__n_sentences * self.__n_genes,
+            in_features=self.__n_sentences * self.gene_classifier.hyperparameter['hidden_size'],
             out_features=self.hyperparameter['hidden_size']
         )
-        # init fusion classifier
+        # init fusion classifier layer
         __fusion_classifier_layer = nn.ModuleList(
             [
                 nn.Linear(
@@ -64,6 +66,7 @@ class FCFusionClassifier(MyModel):
                 nn.Dropout(p=self.hyperparameter['dropout'])
             ]
         )
+        # create fusion classifier model
         self.fusion_classifier = nn.ModuleList(
             [
                 __fusion_classifier_layer for _ in range(self.hyperparameter['n_hidden_layers'])
@@ -88,14 +91,18 @@ class FCFusionClassifier(MyModel):
         # call bert on each sentence
         outputs = []
         for idx in range(len(matrix_input_ids)):
-            outputs.append(self.gene_classifier(
-                input_ids=matrix_input_ids[idx],
-                attention_mask=matrix_attention_mask[idx],
-                token_type_ids=matrix_token_type_ids[idx]
-            )[0])
+            outputs.append(
+                self.gene_classifier.embedding_step(
+                    {
+                        'input_ids': matrix_input_ids[idx],
+                        'attention_mask': matrix_attention_mask[idx],
+                        'token_type_ids': matrix_token_type_ids[idx]
+                    }
+                )
+            )
         # prepare inputs for fusion classifier
-        inputs: torch.Tensor = torch.stack(outputs)  # (batch_size, n_sentences, n_genes)
-        inputs = torch.flatten(inputs, start_dim=1, end_dim=2)  # (batch_size, n_sentences * n_genes)
+        inputs: torch.Tensor = torch.stack(outputs)  # (batch_size, n_sentences, hidden_size)
+        inputs = torch.flatten(inputs, start_dim=1, end_dim=2)
 
         # use projection layer
         outputs = self.projection(inputs)
