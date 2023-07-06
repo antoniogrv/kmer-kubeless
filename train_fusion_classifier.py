@@ -46,6 +46,7 @@ def train_fusion_classifier(
         model_selected: str,
         hyperparameters: Dict[str, any],
         batch_size: int,
+        freeze: bool,
         re_train: bool,
         grid_search: bool,
 ):
@@ -103,7 +104,7 @@ def train_fusion_classifier(
     # init test
     parent_dir, test_dir, log_dir, model_dir, model_path = init_test(
         result_dir=result_dir,
-        task=os.path.join(task, classification_type),
+        task=os.path.join(task, classification_type, f'{"freeze" if freeze else "not_freeze"}'),
         model_selected=model_selected,
         test_id=test_id,
         model_name=model_name,
@@ -179,6 +180,7 @@ def train_fusion_classifier(
 
         # update hyperparameter
         hyperparameters['gene_classifier'] = gc_model_path
+        hyperparameters['freeze'] = freeze
         n_kmers: int = len_read - len_kmer + 1
         hyperparameters['n_sentences'] = n_kmers - n_words + 1
         if classification_type == 'fusion':
@@ -193,6 +195,7 @@ def train_fusion_classifier(
                 hyperparameter=hyperparameters,
                 weights=class_weights
             )
+        """
         elif model_selected == 'conv':
             model: MyModel = ConvClassifier(
                 model_dir=model_dir,
@@ -200,6 +203,7 @@ def train_fusion_classifier(
                 hyperparameter=hyperparameters,
                 weights=class_weights
             )
+        """
 
         # log model hyper parameters
         logger.info('Gene classifier hyperparameter')
