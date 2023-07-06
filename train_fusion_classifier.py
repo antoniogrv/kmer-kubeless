@@ -15,9 +15,9 @@ from torch.utils.data import DataLoader
 
 from model import MyModel
 from model import FCFusionClassifier
-from model import ConvClassifier
 
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from train_gene_classifier import train_gene_classifier
 
@@ -195,15 +195,6 @@ def train_fusion_classifier(
                 hyperparameter=hyperparameters,
                 weights=class_weights
             )
-        """
-        elif model_selected == 'conv':
-            model: MyModel = ConvClassifier(
-                model_dir=model_dir,
-                model_name=model_name,
-                hyperparameter=hyperparameters,
-                weights=class_weights
-            )
-        """
 
         # log model hyper parameters
         logger.info('Gene classifier hyperparameter')
@@ -218,6 +209,14 @@ def train_fusion_classifier(
             eps=1e-8,
             betas=(0.9, 0.999)
         )
+        scheduler = ReduceLROnPlateau(
+            optimizer,
+            mode='min',
+            factor=0.1,
+            patience=5,
+            threshold=0.0001,
+            threshold_mode='abs'
+        )
 
         # put model on device available
         model.to(device)
@@ -228,6 +227,7 @@ def train_fusion_classifier(
             device=device,
             epochs=1000,
             evaluation=True,
+            scheduler=scheduler,
             val_loader=val_loader,
             logger=train_logger
         )
