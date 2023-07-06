@@ -30,6 +30,7 @@ class FCFusionClassifier(MyModel):
                 'n_hidden_layers': hyperparameter['n_hidden_layers'],
                 'dropout': hyperparameter['dropout'],
                 'gene_classifier': hyperparameter['gene_classifier'],
+                'freeze': hyperparameter['freeze'],
                 'n_sentences': hyperparameter['n_sentences'],
                 'n_classes': hyperparameter['n_classes']
             },
