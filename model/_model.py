@@ -75,6 +75,7 @@ class MyModel(nn.Module, metaclass=ABCMeta):
             evaluation: bool = False,
             val_loader: Optional[DataLoader] = None,
             patience: int = 10,
+            scheduler=None,
             logger: Optional[log] = None
     ) -> None:
         # print the header of the result table
@@ -161,6 +162,9 @@ class MyModel(nn.Module, metaclass=ABCMeta):
                 val_loss, val_accuracy = self.evaluate_model(val_loader, device)
                 # print performance over the entire training data
                 time_elapsed: float = time.time() - t0_epoch
+                # do scheduler step if it is not none
+                if scheduler is not None:
+                    scheduler.step(val_loss)
                 # early stopping
                 if val_loss > last_loss:
                     trigger_times += 1
