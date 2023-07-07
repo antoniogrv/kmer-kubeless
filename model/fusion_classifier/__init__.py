@@ -1,1 +1,2 @@
 from model.fusion_classifier._fully_connected_config import FCFullyConnectedModelConfig
+from model.fusion_classifier._fully_connected import FCFusionClassifier
