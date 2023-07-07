@@ -266,6 +266,79 @@ def train_fusion_classifier(
     elif grid_search:
         return
 
+    # if the model is already trained and the grid search parameter is set to true then stop
+    elif grid_search:
+        return model_path, model_config
+
+    # init loggers
+    logger: logging.Logger = setup_logger(
+        'logger',
+        os.path.join(log_dir, 'logger.log')
+    )
+    result_logger: logging.Logger = setup_logger(
+        'result',
+        os.path.join(test_dir, 'result.log')
+    )
+
+    # load test dataset
+    test_dataset = FusionDataset(
+        root_dir=root_dir,
+        conf=dataset_conf,
+        dataset_type='test'
+    )
+
+    # log test dataset status
+    logger.info('No. records test set')
+    logger.info(test_dataset.print_dataset_status())
+
+    # load model
+    model: MyModel = torch.load(model_path)
+    # set device gpu if cuda is available
+    device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # set model on gpu
+    model.to(device)
+
+    # create test data loader
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=True
+    )
+    # test model
+    y_true, y_probs = model.predict(
+        test_loader=test_loader,
+        device=device
+    )
+
+    # log results
+    y_pred = log_results(
+        y_true=y_true,
+        y_probs=y_probs,
+        target_names=list(test_dataset.get_labels_dict().keys()),
+        logger=result_logger,
+        test_dir=test_dir
+    )
+
+    # close loggers
+    close_loggers([logger, result_logger])
+    del logger
+    del result_logger
+
+    # save result
+    save_result(
+        result_csv_path=os.path.join(parent_dir, 'results.csv'),
+        len_read=len_read,
+        len_kmer=len_kmer,
+        n_words=n_words,
+        tokenizer_selected=tokenizer_selected,
+        hyper_parameters=model_config.hyper_parameters,
+        y_true=y_true,
+        y_pred=y_pred
+    )
+
+    # return model_path
+    return model_path, model_config
+
 
 if __name__ == '__main__':
     # define inputs for this script
