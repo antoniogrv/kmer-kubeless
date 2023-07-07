@@ -150,7 +150,7 @@ class FusionDataset(MyDataset):
             f'chimeric_{conf.len_read}_'
             f'{conf.n_fusion}_'
             f'kmer_{conf.len_kmer}_'
-            f'{conf.classification_type}_'
+            f'fusion_'
             f'train.csv'
         )
         __val_dataset_path: str = os.path.join(
@@ -158,7 +158,7 @@ class FusionDataset(MyDataset):
             f'chimeric_{conf.len_read}_'
             f'{conf.n_fusion}_'
             f'kmer_{conf.len_kmer}_'
-            f'{conf.classification_type}_'
+            f'{"fusion"}_'
             f'val.csv'
         )
         __test_dataset_path: str = os.path.join(
@@ -166,12 +166,12 @@ class FusionDataset(MyDataset):
             f'chimeric_{conf.len_read}_'
             f'{conf.n_fusion}_'
             f'kmer_{conf.len_kmer}_'
-            f'{conf.classification_type}_'
+            f'fusion_'
             f'test.csv'
         )
         self.__labels_path: str = os.path.join(
             self.inputs_dir,
-            f'chimeric_label_{conf.classification_type}.pkl'
+            f'chimeric_label_fusion.pkl'
         )
         # check if train, val and test set are already generateds
         generation_sets_phase_flag: bool = generation_kmers_phase_flag and (
@@ -183,18 +183,17 @@ class FusionDataset(MyDataset):
         if not generation_sets_phase_flag:
             # load chimeric kmers dataset
             __chimeric_kmers_dataset: pd.DataFrame = pd.read_csv(__chimeric_kmers_dataset_path)
-            # create labels for dataset by classification_type value
-            if conf.classification_type == 'fusion':
-                __chimeric_kmers_dataset['label'] = np.where(
-                    __chimeric_kmers_dataset['gene_1'] != __chimeric_kmers_dataset['gene_2'], 0, 1
-                )
-                self.__labels: Dict[str, int] = {
-                    'chimeric': 0,
-                    'non-chimeric': 1
-                }
-                with open(self.__labels_path, 'wb') as handle:
-                    pickle.dump(self.__labels, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                self.update_file(self.__labels_path)
+            # create labels for dataset
+            __chimeric_kmers_dataset['label'] = np.where(
+                __chimeric_kmers_dataset['gene_1'] != __chimeric_kmers_dataset['gene_2'], 0, 1
+            )
+            self.__labels: Dict[str, int] = {
+                'chimeric': 0,
+                'non-chimeric': 1
+            }
+            with open(self.__labels_path, 'wb') as handle:
+                pickle.dump(self.__labels, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            self.update_file(self.__labels_path)
             # split dataset in train, val and test set
             __train_dataset, __test_dataset = train_test_split(
                 __chimeric_kmers_dataset,
@@ -230,7 +229,7 @@ class FusionDataset(MyDataset):
             f'chimeric_{conf.len_read}_'
             f'{conf.n_fusion}_'
             f'kmer_{conf.len_kmer}_'
-            f'{conf.classification_type}_'
+            f'fusion_'
             f'{self.dataset_type}.csv'
         )
         self.__dataset: pd.DataFrame = pd.read_csv(self.__dataset_path)
@@ -244,7 +243,7 @@ class FusionDataset(MyDataset):
             f'kmer_{conf.len_kmer}_'
             f'n_words_{conf.n_words}_'
             f'tokenizer_{conf.tokenizer}_'
-            f'{conf.classification_type}_'
+            f'fusion_'
             f'{self.dataset_type}.pkl'
         )
         # check if inputs tensor are already generateds
