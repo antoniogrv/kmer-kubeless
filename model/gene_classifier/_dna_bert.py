@@ -133,7 +133,7 @@ class GCDNABert(GeneClassifier):
             self,
             target: torch.Tensor,
             output: torch.Tensor
-    ):
+    ) -> torch.Tensor:
         if self.n_classes == 2:
             return self.__loss(output.view(-1), target.view(-1))
         else:
