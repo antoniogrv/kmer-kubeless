@@ -24,7 +24,6 @@ class FusionDatasetConfig(MyDatasetConfig):
                 'n_words': n_words,
                 'tokenizer': tokenizer,
                 'n_fusion': n_fusion,
-                'classification_type': classification_type
             },
             **kwargs
         )
