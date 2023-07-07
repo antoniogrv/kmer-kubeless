@@ -126,6 +126,20 @@ def define_fusion_classifier_hyperparameters(
             'default': 2,
             'help': 'define number of hidden layers'
         },
+        f'-rnn_type': {
+            'dest': f'rnn_type',
+            'action': 'store',
+            'type': str,
+            'default': 'lstm',
+            'help': 'define type of recurrent layers'
+        },
+        f'-n_rnn_layers': {
+            'dest': f'n_rnn_layers',
+            'action': 'store',
+            'type': int,
+            'default': 1,
+            'help': 'define no. of recurrent layers'
+        },
         f'-pooling_op': {
             'dest': f'pooling_op',
             'action': 'store',
@@ -172,8 +186,8 @@ def check_fusion_classifier_hyperparameters(
         args_dict: Dict[str, str],
 ) -> None:
     # check model selected
-    if args_dict[f'model_selected'] not in ['fc']:
-        raise ValueError('select one of these models: ["fc"]')
+    if args_dict[f'model_selected'] not in ['fc', 'rnn']:
+        raise ValueError('select one of these models: ["fc", "rnn"]')
 
 
 def define_gene_classifier_inputs() -> Tuple[Dict[str, any], Dict[str, any]]:
