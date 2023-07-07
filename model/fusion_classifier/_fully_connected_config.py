@@ -4,23 +4,22 @@ from model import MyModelConfig
 class FCFullyConnectedModelConfig(MyModelConfig):
     def __init__(
             self,
-            model_dir: str,
-            model_name: str = 'model',
-            n_classes: int = 1,
+            gene_classifier_name: str,
+            gene_classifier_path: str,
+            freeze: bool = True,
             hidden_size: int = 1024,
             n_hidden_layers: int = 1,
             pooling_op: str = 'flatten',
             **kwargs
     ):
-        # check no. classes
-        assert n_classes > 1
         # check pooling operation
         assert pooling_op in ['flatten', 'max', 'mean', 'add']
         # call super class
         super().__init__(
-            model_dir=model_dir,
-            model_name=model_name,
             hyper_parameters={
+                'gene_classifier_name': gene_classifier_name,
+                'gene_classifier_path': gene_classifier_path,
+                'freeze': freeze,
                 'hidden_size': hidden_size,
                 'n_hidden_layers': n_hidden_layers,
                 'pooling_op': pooling_op
