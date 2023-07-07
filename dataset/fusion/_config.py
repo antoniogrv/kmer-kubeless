@@ -11,13 +11,10 @@ class FusionDatasetConfig(MyDatasetConfig):
             n_words: int = 30,
             tokenizer: MyDNATokenizer = None,
             n_fusion: int = 30,
-            classification_type: str = 'fusion',
             **kwargs
     ):
         # check if tokenizer is None
         assert tokenizer is not None
-        # check if classification_type is correct
-        assert classification_type in ['fusion']
         # call super class
         super().__init__(
             hyper_parameters={
@@ -55,7 +52,3 @@ class FusionDatasetConfig(MyDatasetConfig):
     @property
     def n_fusion(self) -> int:
         return self.hyper_parameters['n_fusion']
-
-    @property
-    def classification_type(self) -> str:
-        return self.hyper_parameters['classification_type']
