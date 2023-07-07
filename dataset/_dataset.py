@@ -1,14 +1,15 @@
 from typing import Dict
 
+from abc import ABCMeta
+from abc import abstractmethod
+
 from checksumdir import dirhash
 import pandas as pd
 import hashlib
 import pickle
 import os
 
-from abc import ABCMeta
-from abc import abstractmethod
-
+from dataset import MyDatasetConfig
 from torch.utils.data.dataset import Dataset
 
 
@@ -18,12 +19,12 @@ class MyDataset(Dataset, metaclass=ABCMeta):
             root_dir: str,
             check_dir_name: str,
             check_dict_name: str,
-            conf: Dict[str, any],
+            conf: MyDatasetConfig,
             dataset_type: str
     ):
         super().__init__()
         self.__root_dir: str = root_dir
-        self.__conf: Dict[str, any] = conf
+        self.__conf: MyDatasetConfig = conf
 
         assert dataset_type in ['train', 'val', 'test']
         self.__dataset_type: str = dataset_type
@@ -104,11 +105,6 @@ class MyDataset(Dataset, metaclass=ABCMeta):
         with open(self.__check_dict_path, 'wb') as handle:
             pickle.dump(self.__check_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    @abstractmethod
-    def create_conf(**kwargs) -> Dict[str, any]:
-        pass
-
     @property
     def root_dir(self) -> str:
         return self.__root_dir
@@ -122,7 +118,7 @@ class MyDataset(Dataset, metaclass=ABCMeta):
         return self.__inputs_dir
 
     @property
-    def conf(self) -> Dict[str, any]:
+    def conf(self) -> MyDatasetConfig:
         return self.__conf
 
     @property

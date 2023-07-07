@@ -26,18 +26,18 @@ def save_result(
         len_kmer: int,
         n_words: int,
         tokenizer_selected: str,
-        hyperparameter: Dict[str, Any],
+        hyper_parameters: Dict[str, Any],
         y_true: np.ndarray,
         y_pred: np.ndarray
 ):
     # init columns of result df
     columns = ['len_read', 'len_kmer', 'n_words', 'tokenizer_selected']
-    columns += list(hyperparameter.keys())
+    columns += list(hyper_parameters.keys())
     columns += ['accuracy', 'precision', 'recall', 'f1-score']
 
     # create row of df
     values = [len_read, len_kmer, n_words, tokenizer_selected]
-    values += [hyperparameter[p] for p in hyperparameter.keys()]
+    values += [hyper_parameters[p] for p in hyper_parameters.keys()]
     accuracy = balanced_accuracy_score(y_true, y_pred)
     precision, recall, f_score, _ = precision_recall_fscore_support(
         y_true,

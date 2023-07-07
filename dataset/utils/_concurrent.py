@@ -10,7 +10,7 @@ import os
 
 from Bio import SeqIO
 
-from transformers.tokenization_utils import PreTrainedTokenizer
+from tokenizer import MyDNATokenizer
 
 
 def split_reads_file_on_processes(
@@ -177,7 +177,7 @@ def generate_sentences_encoded_from_dataset(
         n_words: int,
         n_kmers: int,
         n_sentences: int,
-        tokenizer: PreTrainedTokenizer
+        tokenizer: MyDNATokenizer
 ) -> List[Dict[str, Union[List[Dict[str, torch.Tensor]], torch.Tensor]]]:
     # init inputs
     inputs: List[Dict[str, Union[List[Dict[str, torch.Tensor]], torch.Tensor]]] = []
@@ -233,7 +233,7 @@ def encode_sentences(
         rows_index: Tuple[int, int],
         dataset: pd.DataFrame,
         n_words: int,
-        tokenizer: PreTrainedTokenizer
+        tokenizer: MyDNATokenizer
 ) -> List[Dict[str, torch.Tensor]]:
     # init inputs
     inputs: List[Dict[str, torch.Tensor]] = []

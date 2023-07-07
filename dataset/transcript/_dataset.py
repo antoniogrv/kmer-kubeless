@@ -5,37 +5,35 @@ from typing import Tuple
 from typing import Dict
 from typing import List
 
-from multiprocessing.pool import Pool
-from functools import partial
-
 from tabulate import tabulate
 import pandas as pd
 import pickle
 import torch
 import os
 
-from torch.utils.data.dataset import T_co
+from multiprocessing.pool import Pool
+from functools import partial
 
-from transformers.tokenization_utils import PreTrainedTokenizer
+from dataset.transcript import TranscriptDatasetConfig
+from dataset import MyDataset
+from torch.utils.data.dataset import T_co
 
 from sklearn.model_selection import train_test_split
 
-from dataset import MyDataset
+from dataset.utils import split_dataset_on_processes
+from dataset.utils import split_reads_file_on_processes
+from dataset.utils import generate_sentences_from_kmers
+from dataset.utils import generate_kmers_from_sequences
+from dataset.utils import encode_sentences
 
-from dataset._concurrent import split_dataset_on_processes
-from dataset._concurrent import split_reads_file_on_processes
-from dataset._concurrent import generate_sentences_from_kmers
-from dataset._concurrent import generate_kmers_from_sequences
-from dataset._concurrent import encode_sentences
-
-from dataset._tools import gt_shredder
+from dataset.utils import gt_shredder
 
 
 class TranscriptDataset(MyDataset):
     def __init__(
             self,
             root_dir: str,
-            conf: Dict[str, any],
+            conf: TranscriptDatasetConfig,
             dataset_type: str
     ):
         # call super class
@@ -48,7 +46,7 @@ class TranscriptDataset(MyDataset):
         )
 
         # ======================== Load Gene Panel ======================== #
-        self.__gene_panel_path: str = self.conf['genes_panel_path']
+        self.__gene_panel_path: str = conf.genes_panel_path
         with open(self.__gene_panel_path, 'r') as gene_panel_file:
             self.__genes_list: List[str] = gene_panel_file.read().split('\n')
         self.update_file(self.__gene_panel_path)
@@ -69,7 +67,7 @@ class TranscriptDataset(MyDataset):
                 self.__labels: Dict[str, int] = pickle.load(handle)
 
         # ===================== Generation reads Step ==================== #
-        __gt_shredder_dir: str = os.path.join(self.root_dir, f'gt_shredder_{self.conf["len_read"]}')
+        __gt_shredder_dir: str = os.path.join(self.root_dir, f'gt_shredder_{conf.len_read}')
         # check if reads are already generated
         generation_reads_phase: bool = labelling_phase and self.check_dir(__gt_shredder_dir)
         if not generation_reads_phase:
@@ -78,9 +76,9 @@ class TranscriptDataset(MyDataset):
                 os.makedirs(__gt_shredder_dir)
             # execute gt-shredder on all fastq files
             gt_shredder(
-                transcript_dir=self.conf['transcript_dir'],
+                transcript_dir=conf.transcript_dir,
                 output_dir=__gt_shredder_dir,
-                len_read=self.conf['len_read']
+                len_read=conf.len_read
             )
             # update step info
             self.update_dir(__gt_shredder_dir)
@@ -88,8 +86,8 @@ class TranscriptDataset(MyDataset):
         # ===================== Generation kmers Step =================== #
         __kmers_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'transcript_{self.conf["len_read"]}_'
-            f'kmer_{self.conf["len_kmer"]}.csv'
+            f'transcript_{conf.len_read}_'
+            f'kmer_{conf.len_kmer}.csv'
         )
         # check if kmers dataset is already generated
         generation_kmers_dataset_phase: bool = generation_reads_phase and self.check_dataset(__kmers_dataset_path)
@@ -106,7 +104,7 @@ class TranscriptDataset(MyDataset):
                 results = pool.imap(partial(
                     generate_kmers_from_sequences,
                     dir_path=__gt_shredder_dir,
-                    len_kmer=self.conf['len_kmer'],
+                    len_kmer=conf.len_kmer,
                     labels=self.__labels
                 ), reads_files_for_each_process)
                 # append all local dataset to global dataset
@@ -119,23 +117,23 @@ class TranscriptDataset(MyDataset):
         # ============== Generation of train, val, test Step ============== #
         __train_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'transcript_{self.conf["len_read"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'n_words_{self.conf["n_words"]}_'
+            f'transcript_{conf.len_read}_'
+            f'kmer_{conf.len_kmer}_'
+            f'n_words_{conf.n_words}_'
             f'train.csv'
         )
         __val_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'transcript_{self.conf["len_read"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'n_words_{self.conf["n_words"]}_'
+            f'transcript_{conf.len_read}_'
+            f'kmer_{conf.len_kmer}_'
+            f'n_words_{conf.n_words}_'
             f'val.csv'
         )
         __test_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'transcript_{self.conf["len_read"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'n_words_{self.conf["n_words"]}_'
+            f'transcript_{conf.len_read}_'
+            f'kmer_{conf.len_kmer}_'
+            f'n_words_{conf.n_words}_'
             f'test.csv'
         )
         # check if train, val and test set are already generateds
@@ -182,7 +180,7 @@ class TranscriptDataset(MyDataset):
                     results = pool.imap(partial(
                         generate_sentences_from_kmers,
                         dataset=__datasets[i],
-                        n_words=self.conf['n_words']
+                        n_words=conf.n_words
                     ), rows_for_each_process)
                     # append all local dataset to global dataset
                     for local_dataset in results:
@@ -195,22 +193,21 @@ class TranscriptDataset(MyDataset):
         # load dataset
         self.__dataset_path = os.path.join(
             self.processed_dir,
-            f'transcript_{self.conf["len_read"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'n_words_{self.conf["n_words"]}_'
+            f'transcript_{conf.len_read}_'
+            f'kmer_{conf.len_kmer}_'
+            f'n_words_{conf.n_words}_'
             f'{self.dataset_type}.csv'
         )
         self.__dataset: pd.DataFrame = pd.read_csv(self.__dataset_path)
         self.__status = self.__dataset.groupby('label')['label'].count()
 
         # ==================== Create inputs for model ==================== #
-        assert self.conf['tokenizer'] is not None
         self.__inputs_path: str = os.path.join(
             self.inputs_dir,
-            f'transcript_{self.conf["len_read"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'n_words_{self.conf["n_words"]}_'
-            f'tokenizer_{self.conf["tokenizer"]}_'
+            f'transcript_{conf.len_read}_'
+            f'kmer_{conf.len_kmer}_'
+            f'n_words_{conf.n_words}_'
+            f'tokenizer_{conf.tokenizer}_'
             f'{self.dataset_type}.pkl'
         )
         # check if inputs tensor are already generateds
@@ -226,8 +223,8 @@ class TranscriptDataset(MyDataset):
                 self.__inputs: List[Dict[str, torch.Tensor]] = encode_sentences(
                     rows_index=(0, len(self.__dataset)),
                     dataset=self.__dataset,
-                    n_words=self.conf['n_words'],
-                    tokenizer=self.conf['tokenizer']
+                    n_words=conf.n_words,
+                    tokenizer=conf.tokenizer
                 )
             else:
                 # split dataset on processes
@@ -240,8 +237,8 @@ class TranscriptDataset(MyDataset):
                     results = pool.imap(partial(
                         encode_sentences,
                         dataset=self.__dataset,
-                        n_words=self.conf['n_words'],
-                        tokenizer=self.conf['tokenizer']
+                        n_words=conf.n_words,
+                        tokenizer=conf.tokenizer
                     ), rows_for_each_process)
                     # append all local inputs to global inputs
                     for local_inputs in results:
@@ -277,21 +274,3 @@ class TranscriptDataset(MyDataset):
 
     def __getitem__(self, index) -> T_co:
         return self.__inputs[index]
-
-    @staticmethod
-    def create_conf(
-            genes_panel_path: str,
-            transcript_dir: str,
-            len_read: int = 150,
-            len_kmer: int = 6,
-            n_words: int = 30,
-            tokenizer: PreTrainedTokenizer = None,
-    ) -> Dict[str, any]:
-        return {
-            'genes_panel_path': genes_panel_path,
-            'transcript_dir': transcript_dir,
-            'len_read': len_read,
-            'len_kmer': len_kmer,
-            'n_words': n_words,
-            'tokenizer': tokenizer,
-        }

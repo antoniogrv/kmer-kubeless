@@ -1,44 +1,41 @@
 from typing import Hashable
-
-import dotenv
 from pandas import Series
 from typing import Union
 from typing import Tuple
 from typing import List
 from typing import Dict
 
-from multiprocessing.pool import Pool
-from functools import partial
-
 from tabulate import tabulate
 import pandas as pd
 import numpy as np
 import pickle
+import dotenv
 import torch
 import os
 
-from torch.utils.data.dataset import T_co
+from multiprocessing.pool import Pool
+from functools import partial
 
-from transformers.tokenization_utils import PreTrainedTokenizer
+from dataset.fusion import FusionDatasetConfig
+from dataset import MyDataset
+from torch.utils.data.dataset import T_co
 
 from sklearn.model_selection import train_test_split
 
-from dataset import MyDataset
+from dataset.utils import split_dataset_on_processes
+from dataset.utils import generate_kmers_from_dataset
+from dataset.utils import generate_sentences_encoded_from_dataset
 
-from dataset._concurrent import split_dataset_on_processes
-from dataset._concurrent import generate_kmers_from_dataset
-from dataset._concurrent import generate_sentences_encoded_from_dataset
-
-from dataset._tools import fusion_simulator
-from dataset._tools import art_illumina
-from dataset._tools import generate_reads
+from dataset.utils import fusion_simulator
+from dataset.utils import art_illumina
+from dataset.utils import generate_reads
 
 
 class FusionDataset(MyDataset):
     def __init__(
             self,
             root_dir: str,
-            conf: Dict[str, any],
+            conf: FusionDatasetConfig,
             dataset_type: str
     ):
         # call super class
@@ -51,13 +48,13 @@ class FusionDataset(MyDataset):
         )
 
         # ======================== Load Gene Panel ======================== #
-        self.__gene_panel_path: str = self.conf['genes_panel_path']
+        self.__gene_panel_path: str = conf.genes_panel_path
         with open(self.__gene_panel_path, 'r') as gene_panel_file:
             self.__genes_list: List[str] = gene_panel_file.read().split('\n')
         self.update_file(self.__gene_panel_path)
 
         # ===================== Fusion Simulator Step ===================== #
-        __fusim_dir: str = os.path.join(self.root_dir, f'fusim_{self.conf["n_fusion"]}')
+        __fusim_dir: str = os.path.join(self.root_dir, f'fusim_{conf.n_fusion}')
         __fusim_fasta_format_path: str = os.path.join(__fusim_dir, '{gene}.fasta')
         __fusim_text_format_path: str = os.path.join(__fusim_dir, '{gene}.text')
         # check if fusim step is already done
@@ -71,14 +68,14 @@ class FusionDataset(MyDataset):
             fusion_simulator(
                 fasta_format_path=__fusim_fasta_format_path,
                 text_format_path=__fusim_text_format_path,
-                n_fusions=self.conf['n_fusion'],
+                n_fusions=conf.n_fusion,
                 genes_list=self.__genes_list,
                 fusim_simulator_dir=os.getenv('FUSIM_LOCAL_DIR')
             )
             self.update_dir(__fusim_dir)
 
         # ======================= ART Illumina Step ======================= #
-        __art_dir: str = os.path.join(self.root_dir, f'art_{self.conf["len_read"]}_{self.conf["n_fusion"]}')
+        __art_dir: str = os.path.join(self.root_dir, f'art_{conf.len_read}_{conf.n_fusion}')
         __art_base_format_path: str = os.path.join(__art_dir, '{gene}_art')
         # check if generation of reads step is already done
         art_phase_flag: bool = fusim_phase_flag and self.check_dir(__art_dir)
@@ -87,7 +84,7 @@ class FusionDataset(MyDataset):
             if not os.path.exists(__art_dir):
                 os.makedirs(__art_dir)
             art_illumina(
-                len_read=self.conf['len_read'],
+                len_read=conf.len_read,
                 fusim_fasta_format_path=__fusim_fasta_format_path,
                 art_base_format_path=__art_base_format_path,
                 genes_list=self.__genes_list
@@ -97,14 +94,14 @@ class FusionDataset(MyDataset):
         # ==================== Generation of reads Step =================== #
         __chimeric_reads_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'chimeric_{self.conf["len_read"]}_'
-            f'{self.conf["n_fusion"]}.csv'
+            f'chimeric_{conf.len_read}_'
+            f'{conf.n_fusion}.csv'
         )
         # check if chimeric reads dataset is already generated
         generation_reads_phase_flag: bool = art_phase_flag and self.check_dataset(__chimeric_reads_dataset_path)
         if not generation_reads_phase_flag:
             __chimeric_reads_dataset: pd.DataFrame = generate_reads(
-                len_read=self.conf['len_read'],
+                len_read=conf.len_read,
                 fusim_text_format_path=__fusim_text_format_path,
                 art_base_format_path=__art_base_format_path,
                 genes_list=self.__genes_list
@@ -116,9 +113,9 @@ class FusionDataset(MyDataset):
         # ==================== Generation of kmers Step =================== #
         __chimeric_kmers_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'chimeric_{self.conf["len_read"]}_'
-            f'{self.conf["n_fusion"]}_'
-            f'kmer_{self.conf["len_kmer"]}.csv'
+            f'chimeric_{conf.len_read}_'
+            f'{conf.n_fusion}_'
+            f'kmer_{conf.len_kmer}.csv'
         )
         # check if chimeric kmers dataset is already generated
         generation_kmers_phase_flag: bool = (generation_reads_phase_flag and
@@ -138,7 +135,7 @@ class FusionDataset(MyDataset):
                 results = pool.imap(partial(
                     generate_kmers_from_dataset,
                     dataset=__chimeric_reads_dataset,
-                    len_kmer=self.conf["len_kmer"]
+                    len_kmer=conf.len_kmer
                 ), rows_for_each_process)
                 # append all local dataset to global dataset
                 for local_dataset in results:
@@ -148,34 +145,33 @@ class FusionDataset(MyDataset):
             self.update_dataset(__chimeric_kmers_dataset_path)
 
         # ============== Generation of train, val, test Step ============== #
-        assert self.conf['classification_type'] in ['fusion']
         __train_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'chimeric_{self.conf["len_read"]}_'
-            f'{self.conf["n_fusion"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'{self.conf["classification_type"]}_'
+            f'chimeric_{conf.len_read}_'
+            f'{conf.n_fusion}_'
+            f'kmer_{conf.len_kmer}_'
+            f'{conf.classification_type}_'
             f'train.csv'
         )
         __val_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'chimeric_{self.conf["len_read"]}_'
-            f'{self.conf["n_fusion"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'{self.conf["classification_type"]}_'
+            f'chimeric_{conf.len_read}_'
+            f'{conf.n_fusion}_'
+            f'kmer_{conf.len_kmer}_'
+            f'{conf.classification_type}_'
             f'val.csv'
         )
         __test_dataset_path: str = os.path.join(
             self.processed_dir,
-            f'chimeric_{self.conf["len_read"]}_'
-            f'{self.conf["n_fusion"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'{self.conf["classification_type"]}_'
+            f'chimeric_{conf.len_read}_'
+            f'{conf.n_fusion}_'
+            f'kmer_{conf.len_kmer}_'
+            f'{conf.classification_type}_'
             f'test.csv'
         )
         self.__labels_path: str = os.path.join(
             self.inputs_dir,
-            f'chimeric_label_{self.conf["classification_type"]}.pkl'
+            f'chimeric_label_{conf.classification_type}.pkl'
         )
         # check if train, val and test set are already generateds
         generation_sets_phase_flag: bool = generation_kmers_phase_flag and (
@@ -188,7 +184,7 @@ class FusionDataset(MyDataset):
             # load chimeric kmers dataset
             __chimeric_kmers_dataset: pd.DataFrame = pd.read_csv(__chimeric_kmers_dataset_path)
             # create labels for dataset by classification_type value
-            if self.conf["classification_type"] == 'fusion':
+            if conf.classification_type == 'fusion':
                 __chimeric_kmers_dataset['label'] = np.where(
                     __chimeric_kmers_dataset['gene_1'] != __chimeric_kmers_dataset['gene_2'], 0, 1
                 )
@@ -231,25 +227,24 @@ class FusionDataset(MyDataset):
         # load dataset
         self.__dataset_path = os.path.join(
             self.processed_dir,
-            f'chimeric_{self.conf["len_read"]}_'
-            f'{self.conf["n_fusion"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'{self.conf["classification_type"]}_'
+            f'chimeric_{conf.len_read}_'
+            f'{conf.n_fusion}_'
+            f'kmer_{conf.len_kmer}_'
+            f'{conf.classification_type}_'
             f'{self.dataset_type}.csv'
         )
         self.__dataset: pd.DataFrame = pd.read_csv(self.__dataset_path)
         self.__status = self.__dataset.groupby('label')['label'].count()
 
         # ==================== Create inputs for model ==================== #
-        assert self.conf['tokenizer'] is not None
         self.__inputs_path: str = os.path.join(
             self.inputs_dir,
-            f'chimeric_{self.conf["len_read"]}_'
-            f'{self.conf["n_fusion"]}_'
-            f'kmer_{self.conf["len_kmer"]}_'
-            f'n_words_{self.conf["n_words"]}_'
-            f'tokenizer_{self.conf["tokenizer"]}_'
-            f'{self.conf["classification_type"]}_'
+            f'chimeric_{conf.len_read}_'
+            f'{conf.n_fusion}_'
+            f'kmer_{conf.len_kmer}_'
+            f'n_words_{conf.n_words}_'
+            f'tokenizer_{conf.tokenizer}_'
+            f'{conf.classification_type}_'
             f'{self.dataset_type}.pkl'
         )
         # check if inputs tensor are already generateds
@@ -258,8 +253,8 @@ class FusionDataset(MyDataset):
             # get number of processes
             n_proc: int = 1
             # get number of kmers and number of sentences
-            __n_kmers: int = self.conf['len_read'] - self.conf['len_kmer'] + 1
-            __n_sentences: int = __n_kmers - self.conf['n_words'] + 1
+            __n_kmers: int = conf.len_read - conf.len_kmer + 1
+            __n_sentences: int = __n_kmers - conf.n_words + 1
             # init inputs
             self.__inputs: [Dict[str, Union[List[Dict[str, torch.Tensor]], torch.Tensor]]] = []
             # check if n_proc is greater then 1
@@ -268,10 +263,10 @@ class FusionDataset(MyDataset):
                 self.__inputs = generate_sentences_encoded_from_dataset(
                     rows_index=(0, len(self.__dataset)),
                     dataset=self.__dataset,
-                    n_words=self.conf['n_words'],
+                    n_words=conf.n_words,
                     n_kmers=__n_kmers,
                     n_sentences=__n_sentences,
-                    tokenizer=self.conf['tokenizer']
+                    tokenizer=conf.tokenizer
                 )
             # TODO: debug the call of this function in parallel
             else:
@@ -285,10 +280,10 @@ class FusionDataset(MyDataset):
                     results = pool.imap(partial(
                         generate_sentences_encoded_from_dataset,
                         dataset=self.__dataset,
-                        n_words=self.conf['n_words'],
+                        n_words=conf.n_words,
                         n_kmers=__n_kmers,
                         n_sentences=__n_sentences,
-                        tokenizer=self.conf['tokenizer']
+                        tokenizer=conf.tokenizer
                     ), rows_for_each_process)
                     # append all local inputs to global dataset
                     for local_inputs in results:
@@ -324,23 +319,3 @@ class FusionDataset(MyDataset):
 
     def __getitem__(self, index) -> T_co:
         return self.__inputs[index]
-
-    @staticmethod
-    def create_conf(
-            genes_panel_path: str,
-            len_read: int = 150,
-            len_kmer: int = 6,
-            n_words: int = 30,
-            tokenizer: PreTrainedTokenizer = None,
-            n_fusion: int = 30,
-            classification_type: str = 'fusion'
-    ) -> Dict[str, any]:
-        return {
-            'genes_panel_path': genes_panel_path,
-            'len_read': len_read,
-            'len_kmer': len_kmer,
-            'n_words': n_words,
-            'tokenizer': tokenizer,
-            'n_fusion': n_fusion,
-            'classification_type': classification_type
-        }

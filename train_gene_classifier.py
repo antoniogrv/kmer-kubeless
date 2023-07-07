@@ -3,6 +3,7 @@ from typing import Final
 from typing import Dict
 
 from dotenv import load_dotenv
+import numpy as np
 import logging
 import torch
 import os
@@ -10,11 +11,16 @@ import os
 from tokenizer import MyDNATokenizer
 from tokenizer import DNABertTokenizer
 
+from dataset import TranscriptDatasetConfig
 from dataset import TranscriptDataset
 from torch.utils.data import DataLoader
 
+from model import MyModelConfig
 from model import GeneClassifier
-from model import DNABertGeneClassifier
+from model import evaluate_weights
+
+from model import GCDNABertModelConfig
+from model import GCDNABert
 
 from torch.optim import AdamW
 
@@ -23,7 +29,6 @@ from utils import define_gene_classifier_inputs
 from utils import create_test_id
 from utils import init_test
 from utils import setup_logger
-from utils import evaluate_weights
 from utils import log_results
 from utils import save_result
 from utils import close_loggers
@@ -35,15 +40,17 @@ def train_gene_classifier(
         n_words: int,
         tokenizer_selected: str,
         model_selected: str,
-        hyperparameters: Dict[str, any],
+        hyper_parameters: Dict[str, any],
         batch_size: int,
         re_train: bool,
         grid_search: bool,
 ) -> str:
+
     # get value from .env
     root_dir: Final = os.getenv('ROOT_LOCAL_DIR')
+
     # init tokenizer
-    tokenizer = Optional[MyDNATokenizer]
+    tokenizer: Optional[MyDNATokenizer] = None
     if tokenizer_selected == 'dna_bert':
         tokenizer = DNABertTokenizer(
             root_dir=root_dir,
@@ -56,16 +63,26 @@ def train_gene_classifier(
             len_kmer=len_kmer,
             add_n=True
         )
+
+    # init configuration
+    model_config: Optional[MyModelConfig] = None
+    if model_selected == 'dna_bert':
+        model_config = GCDNABertModelConfig(
+            vocab_size=tokenizer.vocab_size,
+            **hyper_parameters
+        )
+
     # generate test id
     test_id: str = create_test_id(
         len_read=len_read,
         len_kmer=len_kmer,
         n_words=n_words,
         tokenizer=tokenizer,
-        gc_hyperparameters=hyperparameters
+        gc_config=model_config
     )
+
     # create dataset configuration
-    dataset_conf: Dict[str, any] = TranscriptDataset.create_conf(
+    dataset_conf: TranscriptDatasetConfig = TranscriptDatasetConfig(
         genes_panel_path=os.getenv('GENES_PANEL_LOCAL_PATH'),
         transcript_dir=os.getenv('TRANSCRIPT_LOCAL_DIR'),
         len_read=len_read,
@@ -73,10 +90,12 @@ def train_gene_classifier(
         n_words=n_words,
         tokenizer=tokenizer
     )
+
     # get global variables
     task: str = os.getenv('GENE_CLASSIFIER_TASK')
     result_dir: str = os.path.join(os.getcwd(), os.getenv('RESULTS_LOCAL_DIR'))
     model_name: str = os.getenv('MODEL_NAME')
+
     # init test
     parent_dir, test_dir, log_dir, model_dir, model_path = init_test(
         result_dir=result_dir,
@@ -89,6 +108,7 @@ def train_gene_classifier(
 
     # if the model has not yet been trained
     if not os.path.exists(model_path):
+
         # init loggers
         logger: logging.Logger = setup_logger(
             'logger',
@@ -148,22 +168,26 @@ def train_gene_classifier(
         # set device gpu if cuda is available
         device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # evaluating weights for criterion function
-        class_weights: torch.Tensor = evaluate_weights(train_dataset).to(device)
+        y_true = []
+        for idx, label in enumerate(train_dataset.get_dataset_status()):
+            y_true = np.append(y_true, [idx] * label)
+        class_weights: torch.Tensor = evaluate_weights(
+            y_true=y_true,
+            binary=train_dataset.classes() == 2
+        ).to(device)
 
-        # update hyperparameter
-        hyperparameters['vocab_size'] = tokenizer.vocab_size
-        hyperparameters['n_classes'] = train_dataset.classes()
         # define model
-        model: GeneClassifier = DNABertGeneClassifier(
+        model: GeneClassifier = GCDNABert(
             model_dir=model_dir,
             model_name=model_name,
-            hyperparameter=hyperparameters,
+            config=model_config,
+            n_classes=train_dataset.classes(),
             weights=class_weights
         )
 
         # log model hyper parameters
-        logger.info('Model hyperparameter')
-        logger.info(model.print_hyperparameter())
+        logger.info('Model hyper parameters')
+        logger.info(model_config)
 
         # init optimizer
         optimizer = AdamW(
@@ -256,7 +280,7 @@ def train_gene_classifier(
         len_kmer=len_kmer,
         n_words=n_words,
         tokenizer_selected=tokenizer_selected,
-        hyperparameter=model.hyperparameter,
+        hyper_parameters=model_config.hyper_parameters,
         y_true=y_true,
         y_pred=y_pred
     )
@@ -267,7 +291,7 @@ def train_gene_classifier(
 
 if __name__ == '__main__':
     # define inputs for this script
-    __args, __hyperparameters = define_gene_classifier_inputs()
+    __args, __hyper_parameters = define_gene_classifier_inputs()
 
     # load dotenv file
     load_dotenv(dotenv_path=os.path.join(os.getcwd(), '.env'))
@@ -275,5 +299,5 @@ if __name__ == '__main__':
     # execute train_gene_classifier method
     train_gene_classifier(
         **__args,
-        hyperparameters=__hyperparameters
+        hyper_parameters=__hyper_parameters
     )

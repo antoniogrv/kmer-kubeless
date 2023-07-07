@@ -55,7 +55,9 @@ def define_fusion_training_parameters(
     arg_parser.add_argument(f'-classification_type', dest=f'classification_type', action='store',
                             type=str, default='fusion', help='select the type of classification desired')
     arg_parser.add_argument(f'-batch_size', dest=f'batch_size', action='store',
-                            type=int, default=4, help='define batch size')
+                            type=int, default=512, help='define batch size')
+    arg_parser.add_argument(f'-freeze', dest=f'freeze', action='store', type=str2bool, default=True,
+                            help='if set to true, the weights of the gene model embedding layer is not updated')
     arg_parser.add_argument(f'-re_train', dest=f're_train', action='store', type=str2bool,
                             default=False, help='set true if you wish to retrain the model despite having already '
                                                 'tested with these hyperparameters. Obviously, if the model has been '
@@ -82,33 +84,12 @@ def define_gene_classifier_hyperparameters(
             'default': 7,
             'help': 'define number of hidden layers'
         },
-        f'-{prefix}rnn': {
-            'dest': f'{prefix}rnn',
-            'action': 'store',
-            'type': str,
-            'default': 'lstm',
-            'help': 'define type of recurrent layer'
-        },
-        f'-{prefix}n_rnn_layers': {
-            'dest': f'{prefix}n_rnn_layers',
-            'action': 'store',
-            'type': int,
-            'default': 2,
-            'help': 'define number of recurrent layers'
-        },
         f'-{prefix}n_attention_heads': {
             'dest': f'{prefix}n_attention_heads',
             'action': 'store',
             'type': int,
             'default': 1,
             'help': 'define number of attention heads'
-        },
-        f'-{prefix}n_beams': {
-            'dest': f'{prefix}n_beams',
-            'action': 'store',
-            'type': int,
-            'default': 1,
-            'help': 'define number of beams'
         },
         f'-{prefix}dropout': {
             'dest': f'{prefix}dropout',
@@ -144,8 +125,15 @@ def define_fusion_classifier_hyperparameters(
             'dest': f'n_hidden_layers',
             'action': 'store',
             'type': int,
-            'default': 1,
+            'default': 2,
             'help': 'define number of hidden layers'
+        },
+        f'-pooling_op': {
+            'dest': f'pooling_op',
+            'action': 'store',
+            'type': str,
+            'default': 'avg',
+            'help': "define type of pooling's operation"
         },
         f'-dropout': {
             'dest': f'dropout',
@@ -180,9 +168,6 @@ def check_gene_classifier_hyperparameters(
     # check model selected
     if args_dict[f'{prefix}model_selected'] not in ['dna_bert']:
         raise ValueError('select one of these models: ["dna_bert"]')
-    # check recurrent layer selected
-    if args_dict[f'{prefix}rnn'] not in ['lstm', 'gru']:
-        raise ValueError('select one of these recurrent layers: ["lstm", "gru"]')
 
 
 def check_fusion_classifier_hyperparameters(
@@ -191,6 +176,9 @@ def check_fusion_classifier_hyperparameters(
     # check model selected
     if args_dict[f'model_selected'] not in ['fc']:
         raise ValueError('select one of these models: ["fc"]')
+    # check pooling op
+    if args_dict[f'pooling_op'] not in ['add', 'max', 'mean', 'flatten']:
+        raise ValueError('select one of these pooling operation: ["add", "max", "mean", "flatten"]')
     # check type of classification
     if args_dict[f'classification_type'] not in ['fusion']:
         raise ValueError('select one of these classification types: ["fusion"]')

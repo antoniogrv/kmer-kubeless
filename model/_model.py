@@ -3,18 +3,12 @@ from typing import Final
 from typing import Tuple
 from typing import Dict
 from typing import List
-from typing import Any
 
 from abc import ABCMeta
 from abc import abstractmethod
 
-import torch
-import torch.nn as nn
-from torch.nn import functional as F
-from torch.utils.data import DataLoader
+from model import MyModelConfig
 
-from sklearn.metrics import accuracy_score
-from tabulate import tabulate
 from logging import log
 from glob import glob
 import numpy as np
@@ -22,7 +16,14 @@ import time
 import copy
 import os
 
-N_EPOCHS_FOR_CHECKPOINT: Final = 5
+import torch
+import torch.nn as nn
+from torch.nn import functional as F
+from torch.utils.data import DataLoader
+
+from sklearn.metrics import accuracy_score
+
+N_EPOCHS_FOR_CHECKPOINT: Final = 1
 
 
 class MyModel(nn.Module, metaclass=ABCMeta):
@@ -31,28 +32,58 @@ class MyModel(nn.Module, metaclass=ABCMeta):
             self,
             model_dir: str,
             model_name: str,
-            hyperparameter: Dict[str, any],
-            weights: Optional[torch.Tensor]
+            config: MyModelConfig,
+            n_classes: int = 1,
+            weights: Optional[torch.Tensor] = None
     ):
         super().__init__()
         self.__model_dir = model_dir
         self.__model_name = model_name
-        self.__hyperparameter = hyperparameter
-        self.__weights = weights
+        self.__config: MyModelConfig = config
+        assert n_classes > 1
+        self.__n_classes = n_classes
+        self.__weights: Optional[torch.Tensor] = weights
 
     @abstractmethod
-    def load_data(self, batch, device: torch.device) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+    def load_data(
+            self,
+            batch,
+            device: torch.device
+    ) -> Tuple[Dict[str, any], torch.Tensor]:
         pass
 
     @abstractmethod
-    def step(self, inputs: Dict[str, any]) -> any:
+    def step(
+            self,
+            inputs: Dict[str, any]
+    ) -> torch.Tensor:
         pass
 
     @abstractmethod
-    def compute_loss(self, target: torch.Tensor, *outputs) -> torch.Tensor:
+    def compute_loss(
+            self,
+            target: torch.Tensor,
+            output: torch.Tensor
+    ) -> torch.Tensor:
         pass
 
-    def check_checkpoint(self) -> [Tuple[str, int]]:
+    @property
+    def model_dir(self) -> str:
+        return self.__model_dir
+
+    @property
+    def model_name(self) -> str:
+        return self.__model_name
+
+    @property
+    def config(self) -> MyModelConfig:
+        return self.__config
+
+    @property
+    def n_classes(self) -> int:
+        return self.__n_classes
+
+    def _check_checkpoint(self) -> [Tuple[str, int]]:
         # find all model checkpoints path inside model directory
         models_checkpoint_paths: List[str] = glob(
             os.path.join(self.__model_dir, f'{self.__model_name}_*.h5')
@@ -90,7 +121,7 @@ class MyModel(nn.Module, metaclass=ABCMeta):
         best_model: Optional[MyModel] = None
 
         # check if there is a checkpoint saved
-        __model_checkpoint_path, __last_epoch_done = self.check_checkpoint()
+        __model_checkpoint_path, __last_epoch_done = self._check_checkpoint()
         if __last_epoch_done > 0:
             # load state dict
             __model_checkpoint: MyModel = torch.load(
@@ -142,8 +173,8 @@ class MyModel(nn.Module, metaclass=ABCMeta):
                     # print training results
                     if logger is not None:
                         logger.info(
-                            f"{epoch_i + 1:^7} | {step:^7} | {batch_loss / batch_counts:^12.6f} | {'-':^10} | {'-':^9} | "
-                            f"{'-':^8} | {time_elapsed:^9.2f}")
+                            f"{epoch_i + 1:^7} | {step:^7} | {batch_loss / batch_counts:^12.6f} |"
+                            f" {'-':^10} | {'-':^9} | {'-':^8} | {time_elapsed:^9.2f}")
 
                     # reset batch tracking variables
                     batch_loss: float = 0
@@ -231,7 +262,7 @@ class MyModel(nn.Module, metaclass=ABCMeta):
         all_outputs = torch.cat(all_outputs, dim=0)
         y_true = torch.cat(y_true, dim=0)
 
-        if self.get_n_classes() == 2:
+        if self.n_classes == 2:
             # apply sigmoid to calculate probabilities
             y_probs: np.array = F.sigmoid(all_outputs).cpu().numpy()
             y_pred: np.ndarray = y_probs.round()
@@ -276,7 +307,7 @@ class MyModel(nn.Module, metaclass=ABCMeta):
         y_true = torch.cat(y_true, dim=0)
 
         # Apply softmax to calculate probabilities
-        if self.get_n_classes() == 2:
+        if self.n_classes == 2:
             # apply sigmoid to calculate probabilities
             y_probs: np.array = F.sigmoid(all_outputs).cpu().numpy()
         else:
@@ -285,28 +316,3 @@ class MyModel(nn.Module, metaclass=ABCMeta):
         y_true = y_true.cpu().numpy()
 
         return y_true, y_probs
-
-    @property
-    def model_name(self) -> str:
-        return self.__model_name
-
-    @property
-    def model_path(self) -> str:
-        return self.__model_path
-
-    @property
-    def hyperparameter(self) -> Dict[str, any]:
-        return self.__hyperparameter
-
-    @abstractmethod
-    def get_n_classes(self) -> int:
-        pass
-
-    def print_hyperparameter(self) -> str:
-        table: List[List[str, Any]] = [[parameter, value] for parameter, value in self.__hyperparameter.items()]
-        table_str: str = tabulate(
-            tabular_data=table,
-            headers=['hyperparameter', 'value'],
-            tablefmt='psql'
-        )
-        return f'\n{table_str}\n'

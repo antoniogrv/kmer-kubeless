@@ -1,26 +1,27 @@
-from typing import Dict
-
 import shutil
 import os
+
+from tokenizer import MyDNATokenizer
+from model import MyModelConfig
 
 
 def create_test_id(
         len_read: int,
         len_kmer: int,
         n_words: int,
-        tokenizer: str,
-        gc_hyperparameters: Dict[str, any],
-        fc_hyperparameters: Dict[str, any] = None
+        tokenizer: MyDNATokenizer,
+        gc_config: MyModelConfig,
+        fc_config: MyModelConfig = None
 ) -> str:
     test_name: str = f'{len_read}_{len_kmer}_{n_words}_{tokenizer}'
-    for parameter in gc_hyperparameters.keys():
-        value = gc_hyperparameters[parameter]
+    for parameter in gc_config.hyper_parameters.keys():
+        value = gc_config.hyper_parameters[parameter]
         if isinstance(value, float):
             value = int(value * 10)
         test_name += f'_{parameter}_{value}'
-    if fc_hyperparameters is not None:
-        for parameter in fc_hyperparameters.keys():
-            value = fc_hyperparameters[parameter]
+    if fc_config is not None:
+        for parameter in fc_config.hyper_parameters.keys():
+            value = fc_config.hyper_parameters[parameter]
             if isinstance(value, float):
                 value = int(value * 10)
             test_name += f'_{parameter}_{value}'

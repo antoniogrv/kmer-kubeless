@@ -1,6 +1,10 @@
+from model._config import MyModelConfig
 from model._model import MyModel
-from model._gene_classifier import GeneClassifier
 
-from model._gc_dna_bert import DNABertGeneClassifier
+from model.gene_classifier import GeneClassifier
+from model.gene_classifier import GCDNABertModelConfig
+from model.gene_classifier import GCDNABert
 
-from model._fc_gene_fusion import FCFusionClassifier
+from model.fusion_classifier import FCFullyConnectedModelConfig
+
+from model._utils import evaluate_weights
