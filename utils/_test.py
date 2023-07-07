@@ -21,6 +21,8 @@ def create_test_id(
         test_name += f'_{parameter}_{value}'
     if fc_config is not None:
         for parameter in fc_config.hyper_parameters.keys():
+            if parameter == 'gene_classifier_path':
+                continue
             value = fc_config.hyper_parameters[parameter]
             if isinstance(value, float):
                 value = int(value * 10)
