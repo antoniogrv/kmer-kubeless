@@ -52,8 +52,6 @@ def define_fusion_training_parameters(
                             type=str, default='fc', help='select the model to be used')
     arg_parser.add_argument(f'-n_fusion', dest=f'n_fusion', action='store',
                             type=int, default=30, help='number of fusions to be generated per gene by fusim')
-    arg_parser.add_argument(f'-classification_type', dest=f'classification_type', action='store',
-                            type=str, default='fusion', help='select the type of classification desired')
     arg_parser.add_argument(f'-batch_size', dest=f'batch_size', action='store',
                             type=int, default=512, help='define batch size')
     arg_parser.add_argument(f'-freeze', dest=f'freeze', action='store', type=str2bool, default=True,
@@ -132,7 +130,7 @@ def define_fusion_classifier_hyperparameters(
             'dest': f'pooling_op',
             'action': 'store',
             'type': str,
-            'default': 'avg',
+            'default': 'flatten',
             'help': "define type of pooling's operation"
         },
         f'-dropout': {
@@ -176,12 +174,6 @@ def check_fusion_classifier_hyperparameters(
     # check model selected
     if args_dict[f'model_selected'] not in ['fc']:
         raise ValueError('select one of these models: ["fc"]')
-    # check pooling op
-    if args_dict[f'pooling_op'] not in ['add', 'max', 'mean', 'flatten']:
-        raise ValueError('select one of these pooling operation: ["add", "max", "mean", "flatten"]')
-    # check type of classification
-    if args_dict[f'classification_type'] not in ['fusion']:
-        raise ValueError('select one of these classification types: ["fusion"]')
 
 
 def define_gene_classifier_inputs() -> Tuple[Dict[str, any], Dict[str, any]]:
