@@ -253,8 +253,6 @@ class MyModel(nn.Module, metaclass=ABCMeta):
             val_loss.append(loss.item())
 
             # save results
-            if isinstance(outputs, tuple):
-                outputs = outputs[0]
             y_true.append(target)
             all_outputs.append(outputs)
 
@@ -297,8 +295,6 @@ class MyModel(nn.Module, metaclass=ABCMeta):
             inputs, target = self.load_data(batch, device)
             # compute logits
             outputs = self.step(inputs)
-            if isinstance(outputs, tuple):
-                outputs = outputs[0]
             y_true.append(target)
             all_outputs.append(outputs)
 
