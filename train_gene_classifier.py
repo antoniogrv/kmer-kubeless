@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import Tuple
 from typing import Final
 from typing import Dict
 
@@ -44,7 +45,7 @@ def train_gene_classifier(
         batch_size: int,
         re_train: bool,
         grid_search: bool,
-) -> str:
+) -> Tuple[str, MyModelConfig]:
 
     # get value from .env
     root_dir: Final = os.getenv('ROOT_LOCAL_DIR')
@@ -217,7 +218,7 @@ def train_gene_classifier(
 
     # if the model is already trained and the grid search parameter is set to true then stop
     elif grid_search:
-        return model_path
+        return model_path, model_config
 
     # init loggers
     logger: logging.Logger = setup_logger(
@@ -286,7 +287,7 @@ def train_gene_classifier(
     )
 
     # return model_path
-    return model_path
+    return model_path, model_config
 
 
 if __name__ == '__main__':
