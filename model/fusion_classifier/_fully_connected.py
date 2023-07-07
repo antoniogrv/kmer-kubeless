@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 
 from torch.nn import BCEWithLogitsLoss
-from torch.nn import functional as F
 
 from model import MyModel
 from model.gene_classifier import GeneClassifier
@@ -34,52 +33,54 @@ class FCFullyConnected(MyModel):
         )
 
         # init configuration of model
-        self.__gene_classifier_path: str = self.hyperparameter['gene_classifier']
+        self.__gene_classifier_path: str = config.gene_classifier_path
         # load gene classifier
         self.gene_classifier: GeneClassifier = torch.load(
             self.__gene_classifier_path
         )
 
         # freeze all layer of gene_classifier
-        if self.hyperparameter['freeze']:
+        if config.freeze:
             for param in self.gene_classifier.get_embedding_layer().parameters():
                 param.requires_grad = False
 
-        # load configuration
-        self.__n_sentences = self.hyperparameter['n_sentences']
-
         # projection layer
-        self.projection = nn.Linear(
-            in_features=(
-                            self.__n_sentences if self.hyperparameter['pooling_op'] == 'flatten' else 1
-                        ) * self.gene_classifier.hyperparameter['hidden_size'],
-            out_features=self.hyperparameter['hidden_size']
+        self.projection = nn.Sequential(
+                nn.Linear(
+                    in_features=(
+                                    config.n_sentences if config.pooling_op == 'flatten' else 1
+                                ) * self.gene_classifier.config.hyper_parameters['hidden_size'],
+                    out_features=config.hidden_size
+                ),
+                nn.ReLU()
         )
+
         # init fusion classifier layer
         __fusion_classifier_layer = nn.ModuleList(
             [
                 nn.Linear(
-                    in_features=self.hyperparameter['hidden_size'],
-                    out_features=self.hyperparameter['hidden_size']
+                    in_features=config.hidden_size,
+                    out_features=config.hidden_size
                 ),
-                nn.Dropout(p=self.hyperparameter['dropout'])
+                nn.Dropout(p=config.dropout),
+                nn.GELU()
             ]
         )
         # create fusion classifier model
         self.fusion_classifier = nn.ModuleList(
             [
-                __fusion_classifier_layer for _ in range(self.hyperparameter['n_hidden_layers'])
+                __fusion_classifier_layer for _ in range(config.n_hidden_layers)
             ]
         )
 
         # classification layer
         self.classification = nn.Linear(
-            in_features=self.hyperparameter['hidden_size'],
-            out_features=1 if self.hyperparameter['n_classes'] == 2 else self.hyperparameter['n_classes']
+            in_features=config.hidden_size,
+            out_features=1
         )
 
         # init loss function
-        self.loss = BCEWithLogitsLoss(pos_weight=weights)
+        self.__loss = BCEWithLogitsLoss(pos_weight=weights)
 
     def forward(
             self,
@@ -101,9 +102,9 @@ class FCFullyConnected(MyModel):
             )
         # prepare inputs for fusion classifier
         inputs: torch.Tensor = torch.stack(outputs)  # (batch_size, n_sentences, hidden_size)
-        if self.hyperparameter['pooling_op'] == 'mean':
+        if self.config.hyper_parameters['pooling_op'] == 'mean':
             inputs = torch.mean(inputs, 1)
-        elif self.hyperparameter['pooling_op'] == 'flatten':
+        elif self.config.hyper_parameters['pooling_op'] == 'flatten':
             inputs = torch.flatten(inputs, start_dim=1, end_dim=2)
         # use projection layer
         outputs = self.projection(inputs)
@@ -112,7 +113,7 @@ class FCFullyConnected(MyModel):
         for layer_idx in range(len(self.fusion_classifier)):
             outputs = self.fusion_classifier[layer_idx][0](outputs)
             outputs = self.fusion_classifier[layer_idx][1](outputs)
-            outputs = F.gelu(outputs)
+            outputs = self.fusion_classifier[layer_idx][2](outputs)
 
         # use classification layer
         outputs = self.classification(outputs)
@@ -140,8 +141,8 @@ class FCFullyConnected(MyModel):
             matrix_token_type_ids=inputs['matrix_token_type_ids']
         )
 
-    def compute_loss(self, target: torch.Tensor, *outputs):
-        return self.loss(input=outputs[0], target=target.float())
+    def compute_loss(self, target: torch.Tensor, output: torch.Tensor):
+        return self.__loss(output.view(-1), target.view(-1).float())
 
     def get_n_classes(self) -> int:
         return self.hyperparameter['n_classes']
