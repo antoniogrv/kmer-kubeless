@@ -268,7 +268,7 @@ def train_fusion_classifier(
 
     # if the model is already trained and the grid search parameter is set to true then stop
     elif grid_search:
-        return model_path, model_config
+        return
 
     # init loggers
     logger: logging.Logger = setup_logger(
@@ -335,9 +335,6 @@ def train_fusion_classifier(
         y_true=y_true,
         y_pred=y_pred
     )
-
-    # return model_path
-    return model_path, model_config
 
 
 if __name__ == '__main__':
