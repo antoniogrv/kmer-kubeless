@@ -32,7 +32,7 @@ def gt_shredder(
         os.system(command)
         # remove generated files
         for file_ext in ['.sds', '.ois', '.md5', '.esq', '.des', '.ssp']:
-            os.system(f'rm {file_path}{file_ext}')
+            os.system(f'del {file_path}{file_ext}')
 
 
 def fusion_simulator(
