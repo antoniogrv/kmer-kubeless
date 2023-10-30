@@ -38,6 +38,9 @@ from utils import log_results
 from utils import save_result
 from utils import close_loggers
 
+import random
+import string
+
 
 def train_fusion_classifier(
         len_read: int,
@@ -109,14 +112,16 @@ def train_fusion_classifier(
         )
 
     # generate test id
-    test_id: str = create_test_id(
-        len_read=len_read,
-        len_kmer=len_kmer,
-        n_words=n_words,
-        tokenizer=tokenizer,
-        gc_config=gc_model_config,
-        fc_config=model_config
-    )
+    #test_id: str = create_test_id(
+    #    len_read=len_read,
+    #    len_kmer=len_kmer,
+    #    n_words=n_words,
+    #    tokenizer=tokenizer,
+    #    gc_config=gc_model_config,
+    #    fc_config=model_config
+    #)
+
+    test_id: str = ''.join(random.choices(string.ascii_lowercase, k=5))
 
     # create dataset configuration
     dataset_conf: FusionDatasetConfig = FusionDatasetConfig(
@@ -251,7 +256,7 @@ def train_fusion_classifier(
             train_loader=train_loader,
             optimizer=optimizer,
             device=device,
-            epochs=1000,
+            epochs=2,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
@@ -261,10 +266,6 @@ def train_fusion_classifier(
         close_loggers([train_logger, logger])
         del train_logger
         del logger
-
-    # if the model is already trained and the grid search parameter is set to true then stop
-    elif grid_search:
-        return
 
     # if the model is already trained and the grid search parameter is set to true then stop
     elif grid_search:

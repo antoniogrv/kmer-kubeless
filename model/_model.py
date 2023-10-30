@@ -131,6 +131,8 @@ class MyModel(nn.Module, metaclass=ABCMeta):
             # update n_epochs
             epochs = epochs - __last_epoch_done
 
+        logger.info("Number of epochs: ", epochs)
+
         for epoch_i in range(epochs):
             # measure the elapsed time of each epoch
             t0_epoch: float = time.time()
