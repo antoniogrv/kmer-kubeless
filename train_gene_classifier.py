@@ -205,7 +205,7 @@ def train_gene_classifier(
             train_loader=train_loader,
             optimizer=optimizer,
             device=device,
-            epochs=1000,
+            epochs=2,
             evaluation=True,
             val_loader=val_loader,
             logger=train_logger
